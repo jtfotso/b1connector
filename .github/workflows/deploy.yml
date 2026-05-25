@@ -33,11 +33,14 @@ jobs:
       - name: Publish
         run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --no-build --output ./publish
 
+      - name: Zip publish output
+        run: cd ./publish && zip -r ../publish.zip .
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: webapp
-          path: ./publish
+          path: ./publish.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -49,11 +52,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: webapp
-          path: ./publish
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./publish
+        run: |
+          az webapp deploy \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group b1connector-rg \
+            --src-path ./publish.zip \
+            --type zip
