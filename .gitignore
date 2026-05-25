@@ -1,2 +1,8 @@
 appsettings.Development.json
 appsettings.*.json
+
+# Build outputs
+bin/
+obj/
+publish/
+publish.zip
