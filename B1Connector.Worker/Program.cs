@@ -60,5 +60,6 @@ using (var scope = app.Services.CreateScope())
     
 // Map Shopify webhook endpoints
 app.MapShopifyEndpoints();
+app.MapShopifyInventoryEndpoints();
  
 app.Run();
