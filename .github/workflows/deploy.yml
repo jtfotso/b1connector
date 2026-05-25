@@ -8,7 +8,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: 'b1connector-app'
+  AZURE_WEBAPP_NAME: 'b1connector-app-d2hxckecckavbag4.westeurope-01.azurewebsites.net'
   PROJECT_PATH: 'B1Connector.Worker/B1Connector.Worker.csproj'
 
 jobs:
