@@ -8,8 +8,9 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: 'b1connector-app-d2hxckecckavbag4.westeurope-01.azurewebsites.net'
+  AZURE_WEBAPP_NAME: 'b1connector-app'
   PROJECT_PATH: 'B1Connector.Worker/B1Connector.Worker.csproj'
+  RESOURCE_GROUP: 'b1connector-rg'
 
 jobs:
   build:
@@ -62,6 +63,22 @@ jobs:
         run: |
           az webapp deploy \
             --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --resource-group b1connector-rg \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
             --src-path ./publish.zip \
-            --type zip
+            --type zip \
+            --async true
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for app to restart..."
+          sleep 30
+          STATUS=$(az webapp show \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "state" -o tsv)
+          echo "App state: $STATUS"
+          if [ "$STATUS" != "Running" ]; then
+            echo "App is not running!"
+            exit 1
+          fi
+          echo "Deployment successful!"
