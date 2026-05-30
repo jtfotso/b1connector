@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using B1Connector.Worker.Connectors.Shopify.InventoryModels;
 using B1Connector.Worker.Data;
+using B1Connector.Worker.Infrastructure;
 using B1Connector.Worker.Models;
 using B1Connector.Worker.SapB1;
 using Microsoft.AspNetCore.Builder;
@@ -15,35 +16,42 @@ public static class ShopifyInventoryHandler
 {
     public static void MapShopifyInventoryEndpoints(this WebApplication app)
     {
-        // Shopify calls this when it needs to know stock levels
         app.MapPost("/webhooks/shopify/inventory", HandleInventoryRequestAsync)
             .WithName("ShopifyInventoryRequest");
     }
 
     private static async Task<IResult> HandleInventoryRequestAsync(
         HttpRequest request,
-        [FromServices] ISapB1ServiceLayerClient sapClient,
-        [FromServices] IConfiguration config,
+        [FromServices] TenantService tenantService,
+        [FromServices] IServiceScopeFactory scopeFactory,
         [FromServices] ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
         var logger = loggerFactory.CreateLogger("ShopifyInventoryHandler");
 
-        // Read and validate body
         var body = await ReadBodyAsync(request);
-        var secret = config["Shopify:WebhookSecret"] ?? string.Empty;
-
-        if (!IsValidShopifyRequest(request, body, secret))
-        {
-            logger.LogWarning("Invalid Shopify inventory webhook signature rejected");
-            return Results.Unauthorized();
-        }
 
         var shopDomain = request.Headers["X-Shopify-Shop-Domain"].ToString();
         if (string.IsNullOrEmpty(shopDomain))
             return Results.BadRequest("Missing shop domain header");
 
-        // Parse the inventory request payload
+        // Look up tenant
+        var tenant = await tenantService.GetByShopDomainAsync(shopDomain, ct);
+        if (tenant is null)
+        {
+            logger.LogWarning("Unknown tenant: {ShopDomain}", shopDomain);
+            return Results.Unauthorized();
+        }
+
+        // Validate HMAC using tenant-specific secret
+        var secret = tenantService.GetShopifyWebhookSecret(tenant);
+        if (!IsValidShopifyRequest(request, body, secret))
+        {
+            logger.LogWarning("Invalid inventory webhook signature for {ShopDomain}", shopDomain);
+            return Results.Unauthorized();
+        }
+
+        // Parse payload
         ShopifyInventoryRequest? inventoryRequest;
         try
         {
@@ -57,10 +65,23 @@ public static class ShopifyInventoryHandler
             return Results.BadRequest("Invalid JSON payload");
         }
 
-        // Query B1 for each item
         logger.LogInformation(
             "Inventory request from {ShopDomain} for {Count} items",
             shopDomain, inventoryRequest.Items.Count);
+
+        // Build a per-tenant SAP B1 client using tenant credentials
+        using var scope = scopeFactory.CreateScope();
+        var sapOptions = tenantService.GetServiceLayerOptions(tenant);
+        var httpFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+        var httpClient = httpFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(sapOptions.BaseUrl);
+        httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        var sapLogger = loggerFactory.CreateLogger<ServiceLayerClient>();
+        var sapClient = new ServiceLayerClient(
+            httpClient,
+            Microsoft.Extensions.Options.Options.Create(sapOptions),
+            sapLogger);
 
         await sapClient.LoginAsync();
 
@@ -83,17 +104,10 @@ public static class ShopifyInventoryHandler
                         Quantity = (int)stock.Quantity,
                         Available = stock.Quantity > 0
                     });
-
-                    logger.LogInformation(
-                        "Stock for SKU={Sku} Warehouse={Warehouse}: {Quantity}",
-                        item.Sku, stock.WarehouseCode, stock.Quantity);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex,
-                        "Failed to get stock for SKU={Sku}", item.Sku);
-
-                    // Return 0 for failed items rather than failing the whole request
+                    logger.LogError(ex, "Failed to get stock for SKU={Sku}", item.Sku);
                     results.Add(new ShopifyInventoryResponse
                     {
                         Sku = item.Sku,
@@ -129,8 +143,7 @@ public static class ShopifyInventoryHandler
         string body,
         string secret)
     {
-        // Dev bypass
-        if (secret == "shopify-dev-secret") return true;
+        if (secret == "dev-secret-placeholder") return true;
 
         var hmacHeader = request.Headers["X-Shopify-Hmac-Sha256"].ToString();
         if (string.IsNullOrEmpty(hmacHeader)) return false;

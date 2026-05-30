@@ -77,5 +77,25 @@ public class SyncJobQueue
         });
         await _dbContext.SaveChangesAsync(ct);
     }
-       
+
+    public async Task RecoverStuckJobsAsync(CancellationToken ct)
+    {
+        // Jobs stuck in Processing for more than 10 minutes are considered crashed
+    var threshold = DateTime.UtcNow.AddMinutes(-10);
+
+    var stuckJobs = await _dbContext.SyncJobs
+        .Where(j => j.Status == SyncJobStatus.Processing
+                 && j.CreatedAt < threshold)
+        .ToListAsync(ct);
+
+    foreach (var job in stuckJobs)
+    {
+        job.Status = SyncJobStatus.Pending;
+        job.LastError = "Recovered from stuck Processing state";
+        _logger.LogWarning("Recovered stuck job {JobId}", job.Id);
+    }
+
+    if (stuckJobs.Count > 0)
+        await _dbContext.SaveChangesAsync(ct);
+    }   
 }

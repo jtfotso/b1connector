@@ -2,6 +2,7 @@ using System.Text.Json;
 using B1Connector.Worker.Connectors.Shopify;
 using B1Connector.Worker.Models;
 using B1Connector.Worker.SapB1;
+using B1Connector.Worker.Infrastructure;
 
 namespace B1Connector.Worker.Jobs;
 
@@ -41,54 +42,97 @@ public class SyncJobWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
 
         var queue = scope.ServiceProvider.GetRequiredService<SyncJobQueue>();
-        var sapClient = scope.ServiceProvider.GetRequiredService<ISapB1ServiceLayerClient>();
+        var tenantService = scope.ServiceProvider.GetRequiredService<TenantService>();
         var mapper = scope.ServiceProvider.GetRequiredService<ShopifyOrderMapper>();
+
+        // Recover any jobs stuck in Processing from a previous crash
+        await queue.RecoverStuckJobsAsync(ct);
+
+        SyncJob? job;
+        while ((job = await queue.DequeueAsync(ct)) is not null)
+        {
+            await ProcessJobAsync(job, queue, tenantService, mapper, ct);
+        }
+    }
+
+    private async Task ProcessJobAsync(
+    SyncJob job,
+    SyncJobQueue queue,
+    TenantService tenantService,
+    ShopifyOrderMapper mapper,
+    CancellationToken ct)
+{
+    _logger.LogInformation(
+        "Processing Job {JobId} | Tenant={TenantId} | Type={ConnectorType}",
+        job.Id, job.TenantId, job.ConnectorType);
+
+    try
+    {
+        // Resolve tenant
+        var tenant = await tenantService.GetByTenantIdAsync(job.TenantId, ct);
+        if (tenant is null)
+            throw new InvalidOperationException(
+                $"Tenant {job.TenantId} not found or inactive");
+
+        // Resolve SAP client — mock or real based on config
+        var config = _scopeFactory.CreateScope()
+            .ServiceProvider
+            .GetRequiredService<IConfiguration>();
+        var useMock = config.GetValue<bool>("UseMockServiceLayer");
+
+        ISapServiceLayerClient sapClient;
+        HttpClient? httpClient = null;
+
+        if (useMock)
+        {
+            sapClient = _scopeFactory.CreateScope()
+                .ServiceProvider
+                .GetRequiredService<ISapServiceLayerClient>();
+        }
+        else
+        {
+            var sapOptions = tenantService.GetServiceLayerOptions(tenant);
+            httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(sapOptions.BaseUrl)
+            };
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+            sapClient = new ServiceLayerClient(
+                httpClient,
+                Microsoft.Extensions.Options.Options.Create(sapOptions),
+                _logger as ILogger<ServiceLayerClient>
+                    ?? new LoggerFactory().CreateLogger<ServiceLayerClient>());
+        }
 
         await sapClient.LoginAsync();
 
         try
         {
-            SyncJob? job;
-            while((job = await queue.DequeueAsync(ct)) is not null)
+            var result = job.ConnectorType switch
             {
-                await ProcessJobAsync(job, queue, sapClient, mapper, ct);
-            }
+                ConnectorType.Shopify => await HandleShopifyJobAsync(
+                    job, sapClient, mapper),
+                _ => throw new NotSupportedException(
+                    $"Connector type {job.ConnectorType} is not supported yet")
+            };
+
+            await queue.MarkCompletedAsync(job, result, ct);
+            _logger.LogInformation(
+                "Job {JobId} completed — Result: {Result}", job.Id, result);
         }
         finally
         {
             await sapClient.LogoutAsync();
+            httpClient?.Dispose();
         }
     }
-
-    private async Task ProcessJobAsync(
-        SyncJob job, 
-        SyncJobQueue queue, 
-        ISapB1ServiceLayerClient sapClient, 
-        ShopifyOrderMapper mapper,
-        CancellationToken ct)
+    catch (Exception ex)
     {
-        _logger.LogInformation("Processing job {JobId} | Tenant={TenantId} | Type={ConnectorType}", 
-        job.Id, job.TenantId, job.ConnectorType);
-        try
-        {
-            var result = job.ConnectorType switch
-            {
-                ConnectorType.Shopify => await HandleShopifyJobAsync(job, sapClient, mapper),
-                _ => throw new NotSupportedException($"Connector type {job.ConnectorType} is not supported.")
-            };
-
-            await queue.MarkCompletedAsync(job, result, ct);
-
-            _logger.LogInformation("Job {JobId} completed successfully - Result: {Result}", job.Id, result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Job {JobId} failed", job.Id);
-            await queue.MarkFailedAsync(job, ex, ct);
-        }
+        _logger.LogError(ex, "Job {JobId} failed", job.Id);
+        await queue.MarkFailedAsync(job, ex, ct);
     }
-
-    private async Task<string> HandleShopifyJobAsync(SyncJob job, ISapB1ServiceLayerClient sapClient, ShopifyOrderMapper mapper)
+}
+    private async Task<string> HandleShopifyJobAsync(SyncJob job, ISapServiceLayerClient sapClient, ShopifyOrderMapper mapper)
     {
         var shopifyOrder = JsonSerializer.Deserialize<ShopifyOrder>(job.Payload)
         ?? throw new InvalidOperationException("Failed to deserialize Shopify order data.");

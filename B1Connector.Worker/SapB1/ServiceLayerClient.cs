@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace B1Connector.Worker.SapB1;
 
-public class ServiceLayerClient : ISapB1ServiceLayerClient
+public class ServiceLayerClient : ISapServiceLayerClient
 {
     private readonly HttpClient _httpClient;
     private readonly ServiceLayerOptions _options;

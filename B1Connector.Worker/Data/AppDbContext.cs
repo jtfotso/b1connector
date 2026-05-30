@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
     }
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
     public DbSet<SyncLog> SyncLogs => Set<SyncLog>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,9 +37,53 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Message).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.Level).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.Detail).HasColumnType("nvarchar(max)");
 
             entity.HasIndex(e => e.SyncJobId);
             entity.HasIndex(e => e.CreatedAt);
+        });
+    
+        modelBuilder.Entity<Tenant>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.TenantId)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ShopDomain)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.ShopifyApiKey)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.ShopifyWebhookSecret)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.B1ServiceLayerUrl)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.B1CompanyDb)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.B1UserName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.B1Password)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.HasIndex(e => e.TenantId)
+                .IsUnique();
+
+            entity.HasIndex(e => e.ShopDomain)
+                .IsUnique();
         });
     }
 }

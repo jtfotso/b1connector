@@ -1,6 +1,7 @@
 using B1Connector.Worker;
 using B1Connector.Worker.Connectors.Shopify;
 using B1Connector.Worker.Data;
+using B1Connector.Worker.Infrastructure;
 using B1Connector.Worker.Jobs;
 using B1Connector.Worker.SapB1;
 using Microsoft.AspNetCore.Builder;
@@ -26,7 +27,7 @@ builder.Services.Configure<ServiceLayerOptions>(builder.Configuration.GetSection
 var useMock = builder.Configuration.GetValue<bool>("UseMockServiceLayer");
 if (useMock)
 {
-    builder.Services.AddScoped<ISapB1ServiceLayerClient, MockServiceLayerClient>();
+    builder.Services.AddScoped<ISapServiceLayerClient, MockServiceLayerClient>();
 }
 else
 {
@@ -37,13 +38,17 @@ else
         client.DefaultRequestHeaders.Add("Accept", "application/json");
     }).AddStandardResilienceHandler();
 
-    builder.Services.AddScoped<ISapB1ServiceLayerClient, ServiceLayerClient>();
+    builder.Services.AddScoped<ISapServiceLayerClient, ServiceLayerClient>();
 }
 
 // Jobs
 builder.Services.AddScoped<SyncJobQueue>();
 builder.Services.AddScoped<ShopifyOrderMapper>(); 
 builder.Services.AddHostedService<SyncJobWorker>();
+
+// Infrastructure
+builder.Services.AddScoped<EncryptionService>();
+builder.Services.AddScoped<TenantService>();
 
 //Logging for webhook handler
 builder.Services.AddLogging();

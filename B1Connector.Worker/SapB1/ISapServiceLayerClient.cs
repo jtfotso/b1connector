@@ -2,7 +2,7 @@ using B1Connector.Worker.SapB1.Models;
 
 namespace B1Connector.Worker.SapB1;
 
-public interface ISapB1ServiceLayerClient
+public interface ISapServiceLayerClient
 {
     Task LoginAsync();
     Task LogoutAsync();

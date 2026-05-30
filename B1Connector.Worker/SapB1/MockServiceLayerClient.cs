@@ -3,7 +3,7 @@ using B1Connector.Worker.SapB1.Models;
 
 namespace B1Connector.Worker.SapB1;
 
-public class MockServiceLayerClient : ISapB1ServiceLayerClient
+public class MockServiceLayerClient : ISapServiceLayerClient
 {
     private readonly ILogger<MockServiceLayerClient> _logger;
 
