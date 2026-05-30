@@ -1,11 +1,14 @@
 using B1Connector.Worker;
 using B1Connector.Worker.Connectors.Shopify;
+using B1Connector.Worker.Dashboard.Services;
 using B1Connector.Worker.Data;
 using B1Connector.Worker.Infrastructure;
 using B1Connector.Worker.Jobs;
 using B1Connector.Worker.SapB1;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +56,11 @@ builder.Services.AddScoped<TenantService>();
 //Logging for webhook handler
 builder.Services.AddLogging();
 
+// Dashboard services
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddScoped<DashboardAuthService>();
+builder.Services.AddScoped<DashboardDataService>();
+
 
 var app = builder.Build();
 
@@ -66,5 +74,9 @@ using (var scope = app.Services.CreateScope())
 // Map Shopify webhook endpoints
 app.MapShopifyEndpoints();
 app.MapShopifyInventoryEndpoints();
+
+app.UseStaticFiles();
+app.UseAntiforgery();
+app.MapRazorComponents<B1Connector.Worker.App>().AddInteractiveServerRenderMode();
  
 app.Run();

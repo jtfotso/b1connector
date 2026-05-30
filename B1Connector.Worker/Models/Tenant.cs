@@ -12,6 +12,7 @@ public class Tenant
     public string B1UserName { get; set; } = string.Empty;
     public string B1Password { get; set; } = string.Empty;      // encrypted
     public bool IsActive { get; set; } = true;
+    public string DashboardApiKey { get; set; } = string.Empty; // encrypted
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }

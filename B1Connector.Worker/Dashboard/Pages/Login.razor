@@ -1,0 +1,55 @@
+@page "/dashboard/login"
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject DashboardAuthService AuthService
+
+<div style="max-width:400px;margin:80px auto;font-family:sans-serif;">
+    <h2>B1 Connector Dashboard</h2>
+    <p style="color:#666;">Enter your API key to continue</p>
+
+    <div style="margin-bottom:12px;">
+        <input @bind="ApiKey"
+               @bind:event="oninput"
+               type="password"
+               placeholder="API Key"
+               style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p style="color:#e53e3e;font-size:13px;">@ErrorMessage</p>
+    }
+
+    <button @onclick="LoginAsync"
+            style="width:100%;padding:10px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">
+        Login
+    </button>
+</div>
+
+@code {
+    private string ApiKey { get; set; } = string.Empty;
+    private string ErrorMessage { get; set; } = string.Empty;
+
+    private async Task LoginAsync()
+    {
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            var (isValid, isAdmin, tenantId) = await AuthService.ValidateAsync(ApiKey);
+
+            if (!isValid)
+            {
+                ErrorMessage = "Invalid API key";
+                return;
+            }
+
+            var url = $"/dashboard?key={Uri.EscapeDataString(ApiKey)}";
+            Nav.NavigateTo(url, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+}
