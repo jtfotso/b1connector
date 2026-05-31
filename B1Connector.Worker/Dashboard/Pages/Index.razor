@@ -18,6 +18,13 @@ else
             <h1 style="margin:0;font-size:22px;">
                 @(_isAdmin ? "Admin Dashboard" : $"Dashboard — {_tenantId}")
             </h1>
+            @if (_isAdmin)
+            {
+                <a href="/dashboard/tenants/new?key=@Key"
+                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#2563eb;color:white;border-radius:6px;font-size:13px;text-decoration:none;">
+                    + Add client
+                </a>
+            }
             <span style="font-size:13px;color:#666;">
                 @(_isAdmin ? "Admin" : "Client") view
             </span>

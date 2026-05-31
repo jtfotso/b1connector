@@ -86,4 +86,18 @@ public class TenantService
         _logger.LogInformation("Tenant created: {ShopDomain}", shopDomain);
         return tenant;
     }
+
+    public async Task UpdateDashboardApiKeyAsync(
+    string tenantId,
+    string plainApiKey,
+    CancellationToken ct = default)
+    {
+        var tenant = await _db.Tenants
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId, ct)
+            ?? throw new InvalidOperationException($"Tenant {tenantId} not found");
+
+        tenant.DashboardApiKey = _encryption.Encrypt(plainApiKey);
+        tenant.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+    }
 }

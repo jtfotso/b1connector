@@ -1,0 +1,240 @@
+@page "/dashboard/tenants/new"
+@using B1Connector.Worker.Infrastructure
+@rendermode InteractiveServer
+@inject DashboardAuthService AuthService
+@inject TenantService TenantService
+@inject NavigationManager Nav
+
+@if (!_authenticated)
+{
+    <p style="font-family:sans-serif;padding:2rem;">Checking authentication...</p>
+}
+else
+{
+    <div style="font-family:sans-serif;max-width:700px;margin:0 auto;padding:2rem;">
+
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:2rem;">
+            <a href="/dashboard?key=@_apiKey"
+               style="font-size:13px;color:#2563eb;text-decoration:none;">← Back to dashboard</a>
+        </div>
+
+        <h1 style="font-size:22px;margin:0 0 8px;">Add new client</h1>
+        <p style="color:#666;font-size:14px;margin:0 0 2rem;">
+            Fill in the client's Shopify and SAP B1 credentials. Sensitive fields are encrypted before saving.
+        </p>
+
+        @if (_success)
+        {
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem;">
+                <p style="margin:0 0 8px;font-weight:600;color:#15803D;">Client added successfully!</p>
+                <p style="margin:0 0 4px;font-size:13px;color:#166534;">
+                    Dashboard API key for <strong>@_savedShopDomain</strong>:
+                </p>
+                <div style="background:#DCFCE7;padding:10px 14px;border-radius:6px;font-family:monospace;font-size:14px;color:#14532D;word-break:break-all;">
+                    @_generatedApiKey
+                </div>
+                <p style="margin:8px 0 0;font-size:12px;color:#166534;">
+                    ⚠ Copy this key now and send it to the client. It won't be shown again.
+                </p>
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <button @onclick="ResetForm"
+                            style="padding:7px 14px;background:#15803D;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+                        Add another client
+                    </button>
+                    <a href="/dashboard?key=@_apiKey"
+                       style="padding:7px 14px;background:white;color:#374151;border:1px solid #ddd;border-radius:6px;font-size:13px;text-decoration:none;">
+                        Back to dashboard
+                    </a>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
+                    <p style="margin:0;font-size:13px;color:#DC2626;">@_errorMessage</p>
+                </div>
+            }
+
+            <!-- Shopify section -->
+            <div style="@SectionStyle">
+                <h2 style="@SectionTitleStyle">Shopify</h2>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Shop Domain</label>
+                    <input @bind="ShopDomain" placeholder="yourstore.myshopify.com" style="@InputStyle" />
+                    <span style="@HintStyle">The Shopify store domain</span>
+                </div>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Shopify API Key</label>
+                    <input @bind="ShopifyApiKey" type="password" placeholder="shpat_xxx" style="@InputStyle" />
+                    <span style="@HintStyle">Admin API access token from Shopify Partners</span>
+                </div>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Webhook Secret</label>
+                    <input @bind="ShopifyWebhookSecret" type="password" placeholder="Shopify webhook secret" style="@InputStyle" />
+                    <span style="@HintStyle">Found in Shopify Admin → Settings → Notifications</span>
+                </div>
+            </div>
+
+            <!-- SAP B1 section -->
+            <div style="@SectionStyle">
+                <h2 style="@SectionTitleStyle">SAP Business One</h2>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Service Layer URL</label>
+                    <input @bind="B1ServiceLayerUrl" placeholder="https://192.168.1.10:50000/b1s/v1/" style="@InputStyle" />
+                    <span style="@HintStyle">Full URL including port and /b1s/v1/</span>
+                </div>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Company Database</label>
+                    <input @bind="B1CompanyDb" placeholder="CRONUS" style="@InputStyle" />
+                    <span style="@HintStyle">The SAP B1 company database name</span>
+                </div>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Username</label>
+                    <input @bind="B1UserName" placeholder="manager" style="@InputStyle" />
+                </div>
+
+                <div style="@FieldGroupStyle">
+                    <label style="@LabelStyle">Password</label>
+                    <input @bind="B1Password" type="password" placeholder="SAP B1 password" style="@InputStyle" />
+                </div>
+            </div>
+
+            <button @onclick="SaveAsync" disabled="@_saving"
+                    style="width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer;margin-top:8px;">
+                @(_saving ? "Saving..." : "Add client")
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "key")]
+    public string? Key { get; set; }
+
+    private bool _authenticated;
+    private bool _saving;
+    private bool _success;
+    private string _apiKey = string.Empty;
+    private string _errorMessage = string.Empty;
+    private string _generatedApiKey = string.Empty;
+    private string _savedShopDomain = string.Empty;
+
+    // Form fields
+    private string ShopDomain { get; set; } = string.Empty;
+    private string ShopifyApiKey { get; set; } = string.Empty;
+    private string ShopifyWebhookSecret { get; set; } = string.Empty;
+    private string B1ServiceLayerUrl { get; set; } = string.Empty;
+    private string B1CompanyDb { get; set; } = string.Empty;
+    private string B1UserName { get; set; } = string.Empty;
+    private string B1Password { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Key))
+        {
+            Nav.NavigateTo("/dashboard/login");
+            return;
+        }
+
+        var (isValid, isAdmin, _) = await AuthService.ValidateAsync(Key);
+
+        if (!isValid || !isAdmin)
+        {
+            Nav.NavigateTo("/dashboard/login");
+            return;
+        }
+
+        _authenticated = true;
+        _apiKey = Key;
+    }
+
+    private async Task SaveAsync()
+    {
+        _errorMessage = string.Empty;
+
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(ShopDomain) ||
+            string.IsNullOrWhiteSpace(ShopifyApiKey) ||
+            string.IsNullOrWhiteSpace(ShopifyWebhookSecret) ||
+            string.IsNullOrWhiteSpace(B1ServiceLayerUrl) ||
+            string.IsNullOrWhiteSpace(B1CompanyDb) ||
+            string.IsNullOrWhiteSpace(B1UserName) ||
+            string.IsNullOrWhiteSpace(B1Password))
+        {
+            _errorMessage = "All fields are required.";
+            return;
+        }
+
+        _saving = true;
+
+        try
+        {
+            // Generate a random dashboard API key for this client
+            _generatedApiKey = Convert.ToBase64String(
+                System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+
+            var tenant = await TenantService.CreateTenantAsync(
+                shopDomain: ShopDomain.Trim().ToLower(),
+                shopifyApiKey: ShopifyApiKey.Trim(),
+                shopifyWebhookSecret: ShopifyWebhookSecret.Trim(),
+                b1Url: B1ServiceLayerUrl.Trim(),
+                b1CompanyDb: B1CompanyDb.Trim(),
+                b1UserName: B1UserName.Trim(),
+                b1Password: B1Password.Trim()
+            );
+
+            // Save the generated API key (encrypted) to the tenant
+            await TenantService.UpdateDashboardApiKeyAsync(
+                tenant.TenantId, _generatedApiKey);
+
+            _savedShopDomain = ShopDomain.Trim().ToLower();
+            _success = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message.Contains("UNIQUE")
+                ? $"A tenant with domain '{ShopDomain}' already exists."
+                : $"Error saving tenant: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        _success = false;
+        _errorMessage = string.Empty;
+        _generatedApiKey = string.Empty;
+        _savedShopDomain = string.Empty;
+        ShopDomain = string.Empty;
+        ShopifyApiKey = string.Empty;
+        ShopifyWebhookSecret = string.Empty;
+        B1ServiceLayerUrl = string.Empty;
+        B1CompanyDb = string.Empty;
+        B1UserName = string.Empty;
+        B1Password = string.Empty;
+    }
+
+    private const string SectionStyle =
+        "background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;";
+    private const string SectionTitleStyle =
+        "font-size:14px;font-weight:600;color:#374151;margin:0 0 1rem;";
+    private const string FieldGroupStyle =
+        "margin-bottom:1rem;";
+    private const string LabelStyle =
+        "display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;";
+    private const string InputStyle =
+        "width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;";
+    private const string HintStyle =
+        "font-size:11px;color:#9CA3AF;margin-top:3px;display:block;";
+}
