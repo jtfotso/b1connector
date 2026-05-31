@@ -136,26 +136,34 @@ else
     private string B1UserName { get; set; } = string.Empty;
     private string B1Password { get; set; } = string.Empty;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (!firstRender) return;
-
         if (string.IsNullOrEmpty(Key))
-        {
-            Nav.NavigateTo("/dashboard/login");
-            return;
-        }
+            return; // Don't redirect yet — query params may not be ready
 
-        var (isValid, isAdmin, _) = await AuthService.ValidateAsync(Key);
+        await AuthenticateAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_authenticated) return; // Already authenticated
+        if (string.IsNullOrEmpty(Key)) return;
+
+        await AuthenticateAsync();
+    }
+
+    private async Task AuthenticateAsync()
+    {
+        var (isValid, isAdmin, _) = await AuthService.ValidateAsync(Key!);
 
         if (!isValid || !isAdmin)
         {
-            Nav.NavigateTo("/dashboard/login");
+            Nav.NavigateTo("/dashboard/login", forceLoad: true);
             return;
         }
 
         _authenticated = true;
-        _apiKey = Key;
+        _apiKey = Key!;
         StateHasChanged();
     }
 
