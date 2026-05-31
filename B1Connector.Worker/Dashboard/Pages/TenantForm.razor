@@ -1,4 +1,4 @@
-@page "/dashboard/tenants/new"
+@page "/dashboard/tenants/new/{Key}"
 @using B1Connector.Worker.Infrastructure
 @rendermode InteractiveServer
 @inject DashboardAuthService AuthService
@@ -14,7 +14,7 @@ else
     <div style="font-family:sans-serif;max-width:700px;margin:0 auto;padding:2rem;">
 
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:2rem;">
-            <a href="/dashboard?key=@_apiKey"
+            <a href="/dashboard/@_apiKey"
                style="font-size:13px;color:#2563eb;text-decoration:none;">← Back to dashboard</a>
         </div>
 
@@ -41,7 +41,7 @@ else
                             style="padding:7px 14px;background:#15803D;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
                         Add another client
                     </button>
-                    <a href="/dashboard?key=@_apiKey"
+                    <a href="/dashboard/@_apiKey"
                        style="padding:7px 14px;background:white;color:#374151;border:1px solid #ddd;border-radius:6px;font-size:13px;text-decoration:none;">
                         Back to dashboard
                     </a>
@@ -116,7 +116,7 @@ else
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "key")]
+    [Parameter]
     public string? Key { get; set; }
 
     private bool _authenticated;

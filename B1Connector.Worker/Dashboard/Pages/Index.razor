@@ -1,4 +1,4 @@
-@page "/dashboard"
+@page "/dashboard/{Key}"
 @using B1Connector.Worker.Dashboard.Models
 @inject DashboardAuthService AuthService
 @inject DashboardDataService DataService
@@ -20,7 +20,7 @@ else
             </h1>
             @if (_isAdmin)
             {
-                <a href="/dashboard/tenants/new?key=@Key"
+                <a href="/dashboard/tenants/new/@Key"
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#2563eb;color:white;border-radius:6px;font-size:13px;text-decoration:none;">
                     + Add client
                 </a>
@@ -182,7 +182,7 @@ else
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "key")]
+    [Parameter]
     public string? Key { get; set; }
 
     private bool _authenticated;
@@ -202,14 +202,14 @@ else
     {
         if (string.IsNullOrEmpty(Key))
         {
-            Nav.NavigateTo("/dashboard/login");
+            Nav.NavigateTo("/dashboard/{Uri.EscapeDataString(Key)}", forceLoad: true);
             return;
         }
 
         var (isValid, isAdmin, tenantId) = await AuthService.ValidateAsync(Key);
         if (!isValid)
         {
-            Nav.NavigateTo("/dashboard/login");
+            Nav.NavigateTo($"/dashboard/{Uri.EscapeDataString(Key)}", forceLoad: true);
             return;
         }
 

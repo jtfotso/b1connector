@@ -44,7 +44,7 @@
                 return;
             }
 
-            var url = $"/dashboard?key={Uri.EscapeDataString(ApiKey)}";
+            var url = $"/dashboard/{Uri.EscapeDataString(ApiKey)}";
             Nav.NavigateTo(url, forceLoad: true);
         }
         catch (Exception ex)
