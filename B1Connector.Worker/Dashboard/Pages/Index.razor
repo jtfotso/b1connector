@@ -20,7 +20,7 @@ else
             </h1>
             @if (_isAdmin)
             {
-                <a href="/dashboard/tenants/new?key=@Key"
+                <a href="/dashboard/tenants/new?key=@Uri.EscapeDataString(Key ?? string.Empty)"
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#2563eb;color:white;border-radius:6px;font-size:13px;text-decoration:none;">
                     + Add client
                 </a>
