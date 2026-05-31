@@ -136,8 +136,10 @@ else
     private string B1UserName { get; set; } = string.Empty;
     private string B1Password { get; set; } = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender) return;
+
         if (string.IsNullOrEmpty(Key))
         {
             Nav.NavigateTo("/dashboard/login");
@@ -154,6 +156,7 @@ else
 
         _authenticated = true;
         _apiKey = Key;
+        StateHasChanged();
     }
 
     private async Task SaveAsync()
