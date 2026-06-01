@@ -1,6 +1,7 @@
 appsettings.Development.json
 appsettings.*.json
 ARCHITECTURE_ANAYSIS.md
+Design.md
 
 # Build outputs
 bin/
