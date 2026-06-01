@@ -56,6 +56,9 @@ builder.Services.AddScoped<TenantService>();
 //Logging for webhook handler
 builder.Services.AddLogging();
 
+// HttpClient for external API calls (e.g., Shopify, other services)
+builder.Services.AddHttpClient();
+
 // Dashboard services
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddScoped<DashboardAuthService>();

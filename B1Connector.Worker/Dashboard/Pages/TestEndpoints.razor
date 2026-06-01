@@ -1,0 +1,352 @@
+@page "/dashboard/test/{Key}"
+@using B1Connector.Worker.Dashboard.Models
+@rendermode InteractiveServer
+@inject DashboardAuthService AuthService
+@inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
+@inject IConfiguration Config
+@inject DashboardDataService DataService
+
+
+@if (!_authenticated)
+{
+    <p style="font-family:sans-serif;padding:2rem;">Checking authentication...</p>
+}
+else
+{
+    <div style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:2rem;">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
+            <h1 style="margin:0;font-size:22px;">Test Endpoints</h1>
+            <a href="/dashboard/@Uri.EscapeDataString(Key ?? string.Empty)"
+               style="font-size:13px;color:#2563eb;text-decoration:none;">← Back to dashboard</a>
+        </div>
+
+        <!-- Shop Domain selector -->
+        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+            <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;">
+                Shop Domain
+            </label>
+            <select @bind="ShopDomain"
+            style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;background:white;">
+                <option value="">-- Select a tenant --</option>
+                @foreach (var tenant in _tenants.Where(t => t.IsActive))
+                {
+                    <option value="@tenant.ShopDomain">@tenant.ShopDomain</option>
+                }
+            </select>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
+            <button @onclick='() => _activeTab = "order"'
+                    style="@TabStyle(_activeTab == "order")">
+                POST Order
+            </button>
+            <button @onclick='() => _activeTab = "inventory"'
+                    style="@TabStyle(_activeTab == "inventory")">
+                GET Inventory
+            </button>
+        </div>
+
+        <!-- POST Order tab -->
+        @if (_activeTab == "order")
+        {
+            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+                <h2 style="font-size:14px;font-weight:600;color:#374151;margin:0 0 1rem;">
+                    POST /webhooks/shopify/orders
+                </h2>
+
+                <div style="margin-bottom:10px;">
+                    <label style="@LabelStyle">Shopify Order ID</label>
+                    <input @bind="OrderId" type="number" style="@InputStyle" />
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="@LabelStyle">Customer Email</label>
+                    <input @bind="CustomerEmail" style="@InputStyle" />
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="@LabelStyle">Note</label>
+                    <input @bind="OrderNote" style="@InputStyle" />
+                </div>
+
+                <h3 style="font-size:13px;font-weight:500;color:#374151;margin:1rem 0 8px;">Line Items</h3>
+                @foreach (var (item, index) in _lineItems.Select((x, i) => (x, i)))
+                {
+                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;">
+                        <input @bind="item.Sku" placeholder="SKU" style="@InputStyle" />
+                        <input @bind="item.Quantity" type="number" placeholder="Qty" style="@InputStyle" />
+                        <input @bind="item.Price" placeholder="Price" style="@InputStyle" />
+                        <button @onclick="() => _lineItems.RemoveAt(index)"
+                                style="padding:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;border-radius:6px;cursor:pointer;font-size:12px;">
+                            ✕
+                        </button>
+                    </div>
+                }
+                <button @onclick="AddLineItem"
+                        style="font-size:12px;padding:6px 12px;border:1px solid #D1D5DB;border-radius:6px;cursor:pointer;background:white;margin-bottom:1rem;">
+                    + Add line item
+                </button>
+            </div>
+
+            <button @onclick="SendOrderAsync" disabled="@_sending"
+                    style="padding:10px 20px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-bottom:1rem;">
+                @(_sending ? "Sending..." : "Send Order Webhook")
+            </button>
+        }
+
+        <!-- GET Inventory tab -->
+        @if (_activeTab == "inventory")
+        {
+            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;">
+                <h2 style="font-size:14px;font-weight:600;color:#374151;margin:0 0 1rem;">
+                    POST /webhooks/shopify/inventory
+                </h2>
+
+                <h3 style="font-size:13px;font-weight:500;color:#374151;margin:0 0 8px;">Items to check</h3>
+                @foreach (var (item, index) in _inventoryItems.Select((x, i) => (x, i)))
+                {
+                    <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center;">
+                        <input @bind="item.Sku" placeholder="SKU" style="@InputStyle" />
+                        <input @bind="item.WarehouseCode" placeholder="Warehouse (e.g. 01)" style="@InputStyle" />
+                        <button @onclick="() => _inventoryItems.RemoveAt(index)"
+                                style="padding:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;border-radius:6px;cursor:pointer;font-size:12px;">
+                            ✕
+                        </button>
+                    </div>
+                }
+                <button @onclick="AddInventoryItem"
+                        style="font-size:12px;padding:6px 12px;border:1px solid #D1D5DB;border-radius:6px;cursor:pointer;background:white;margin-bottom:1rem;">
+                    + Add item
+                </button>
+            </div>
+
+            <button @onclick="SendInventoryAsync" disabled="@_sending"
+                    style="padding:10px 20px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-bottom:1rem;">
+                @(_sending ? "Sending..." : "Check Inventory")
+            </button>
+        }
+
+        <!-- Response box -->
+        @if (!string.IsNullOrEmpty(_response))
+        {
+            <div style="@ResponseStyle">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:12px;font-weight:500;color:#374151;">Response</span>
+                    <span style="@StatusBadgeStyle">@_statusCode</span>
+                </div>
+                <pre style="margin:0;font-size:12px;white-space:pre-wrap;word-break:break-all;color:#1F2937;">@_response</pre>
+            </div>
+        }
+
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Key { get; set; }
+
+    private List<TenantSummary> _tenants = new();
+
+    private bool _authenticated;
+    private string _activeTab = "order";
+    private bool _sending;
+    private string _response = string.Empty;
+    private string _statusCode = string.Empty;
+
+    // Order form
+    private string ShopDomain { get; set; } = string.Empty;
+    private long OrderId { get; set; } = 10001;
+    private string CustomerEmail { get; set; } = "test@example.com";
+    private string OrderNote { get; set; } = "Test order";
+    private List<LineItemForm> _lineItems = new()
+    {
+        new LineItemForm { Sku = "ITEM-001", Quantity = 1, Price = "49.99" }
+    };
+
+    // Inventory form
+    private List<InventoryItemForm> _inventoryItems = new()
+    {
+        new InventoryItemForm { Sku = "ITEM-001", WarehouseCode = "01" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Key)) return;
+        await AuthenticateAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_authenticated) return;
+        if (string.IsNullOrEmpty(Key)) return;
+        await AuthenticateAsync();
+    }
+
+    private async Task AuthenticateAsync()
+    {
+        var (isValid, isAdmin, _) = await AuthService.ValidateAsync(Key!);
+        if (!isValid || !isAdmin)
+        {
+            Nav.NavigateTo("/dashboard/login", forceLoad: true);
+            return;
+        }
+        _authenticated = true;
+        _tenants = await DataService.GetAllTenantsSummariesAsync();
+        StateHasChanged();
+    }
+
+    private void AddLineItem() =>
+        _lineItems.Add(new LineItemForm { Sku = string.Empty, Quantity = 1, Price = "0" });
+
+    private void AddInventoryItem() =>
+        _inventoryItems.Add(new InventoryItemForm { Sku = string.Empty, WarehouseCode = "01" });
+
+    private async Task SendOrderAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ShopDomain))
+        {
+            _response = "Please enter a shop domain.";
+            _statusCode = "Error";
+            return;
+        }
+
+        _sending = true;
+        _response = string.Empty;
+        
+
+        try
+        {
+            var payload = new
+            {
+                id = OrderId,
+                email = CustomerEmail,
+                created_at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                note = OrderNote,
+                line_items = _lineItems.Select(l => new
+                {
+                    sku = l.Sku,
+                    quantity = l.Quantity,
+                    price = l.Price
+                })
+            };
+
+            var baseUrl = GetBaseUrl();
+            var client = HttpClientFactory.CreateClient();
+            var request = new HttpRequestMessage(
+                HttpMethod.Post, $"{baseUrl}/webhooks/shopify/orders");
+            request.Headers.Add("X-Shopify-Shop-Domain", ShopDomain);
+            request.Headers.Add("X-Shopify-Hmac-Sha256", "dev-bypass");
+            request.Headers.Add("X-B1Connector-Test", "true");
+            request.Content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            var response = await client.SendAsync(request);
+            _statusCode = $"{(int)response.StatusCode} {response.StatusCode}";
+            _response = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(_response))
+                _response = "(empty body)";
+        }
+        catch (Exception ex)
+        {
+            _statusCode = "Error";
+            _response = ex.Message;
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    private async Task SendInventoryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ShopDomain))
+        {
+            _response = "Please enter a shop domain.";
+            _statusCode = "Error";
+            return;
+        }
+
+        _sending = true;
+        _response = string.Empty;
+
+        try
+        {
+            var payload = new
+            {
+                items = _inventoryItems.Select(i => new
+                {
+                    sku = i.Sku,
+                    warehouse_code = i.WarehouseCode
+                })
+            };
+
+            var baseUrl = GetBaseUrl();
+            var client = HttpClientFactory.CreateClient();
+            var request = new HttpRequestMessage(
+                HttpMethod.Post, $"{baseUrl}/webhooks/shopify/inventory");
+            request.Headers.Add("X-Shopify-Shop-Domain", ShopDomain);
+            request.Headers.Add("X-Shopify-Hmac-Sha256", "dev-bypass");
+            request.Headers.Add("X-B1Connector-Test", "true");
+            request.Content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            var response = await client.SendAsync(request);
+            _statusCode = $"{(int)response.StatusCode} {response.StatusCode}";
+            _response = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(_response))
+                _response = "(empty body)";
+        }
+        catch (Exception ex)
+        {
+            _statusCode = "Error";
+            _response = ex.Message;
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    private string GetBaseUrl()
+    {
+        var uri = Nav.BaseUri.TrimEnd('/');
+        return uri;
+    }
+
+    private static string TabStyle(bool active) => active
+        ? "padding:6px 16px;border-radius:6px;border:1px solid #2563eb;background:#EFF6FF;color:#2563eb;font-size:13px;font-weight:500;cursor:pointer;"
+        : "padding:6px 16px;border-radius:6px;border:1px solid #D1D5DB;background:white;color:#374151;font-size:13px;cursor:pointer;";
+
+    private string ResponseStyle =>
+        _statusCode.StartsWith("2")
+            ? "background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:1rem;"
+            : "background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:1rem;";
+
+    private string StatusBadgeStyle =>
+        _statusCode.StartsWith("2")
+            ? "font-size:12px;font-weight:500;color:#15803D;background:#DCFCE7;padding:2px 8px;border-radius:12px;"
+            : "font-size:12px;font-weight:500;color:#DC2626;background:#FEE2E2;padding:2px 8px;border-radius:12px;";
+
+    private const string LabelStyle =
+        "display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;";
+    private const string InputStyle =
+        "width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;";
+
+    public class LineItemForm
+    {
+        public string Sku { get; set; } = string.Empty;
+        public int Quantity { get; set; } = 1;
+        public string Price { get; set; } = "0";
+    }
+
+    public class InventoryItemForm
+    {
+        public string Sku { get; set; } = string.Empty;
+        public string WarehouseCode { get; set; } = "01";
+    }
+}

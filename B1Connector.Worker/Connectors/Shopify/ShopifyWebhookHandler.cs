@@ -92,6 +92,10 @@ public static class ShopifyWebhookHandler
         // Dev bypass
         if (secret == "dev-secret-placeholder") return true;
 
+        // Admin test tool bypass — only allowed from localhost
+        var testBypass = request.Headers["X-B1Connector-Test"].ToString();
+        if (testBypass == "true" && request.Host.Host == "localhost") return true;
+
         var hmacHeader = request.Headers["X-Shopify-Hmac-Sha256"].ToString();
         if (string.IsNullOrEmpty(hmacHeader)) return false;
 

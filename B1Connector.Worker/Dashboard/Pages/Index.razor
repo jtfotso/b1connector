@@ -24,6 +24,10 @@ else
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#2563eb;color:white;border-radius:6px;font-size:13px;text-decoration:none;">
                     + Add client
                 </a>
+                <a href="/dashboard/test/@Uri.EscapeDataString(Key ?? string.Empty)"
+                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#374151;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;text-decoration:none;">
+                    🧪 Test endpoints
+                </a>
             }
             <span style="font-size:13px;color:#666;">
                 @(_isAdmin ? "Admin" : "Client") view

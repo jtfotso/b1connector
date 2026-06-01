@@ -1,8 +1,10 @@
 appsettings.Development.json
 appsettings.*.json
+ARCHITECTURE_ANAYSIS.md
 
 # Build outputs
 bin/
 obj/
 publish/
 publish.zip
+
