@@ -1,4 +1,4 @@
-@page "/dashboard/test/{Key}"
+@page "/dashboard/test"
 @using B1Connector.Worker.Dashboard.Models
 @rendermode InteractiveServer
 @inject DashboardAuthService AuthService
@@ -18,7 +18,7 @@ else
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
             <h1 style="margin:0;font-size:22px;">Test Endpoints</h1>
-            <a href="/dashboard/@Uri.EscapeDataString(Key ?? string.Empty)"
+            <a href="/dashboard?key=@Uri.EscapeDataString(Key ?? string.Empty)"
                style="font-size:13px;color:#2563eb;text-decoration:none;">← Back to dashboard</a>
         </div>
 
@@ -143,7 +143,7 @@ else
 }
 
 @code {
-    [Parameter]
+    [SupplyParameterFromQuery(Name = "key")]
     public string? Key { get; set; }
 
     private List<TenantSummary> _tenants = new();
