@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B1Connector — Automate Your Store-to-ERP Workflow</title>
+    <meta name="description" content="B1Connector bridges your e-commerce store to SAP Business One, automating order sync with enterprise-grade security and a live dashboard.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231e5a9e'/><text x='16' y='22' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'>⟷</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        /* ===== CSS Reset & Base ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --blue-900: #0a1628;
+            --blue-800: #0f2440;
+            --blue-700: #153357;
+            --blue-600: #1a4478;
+            --blue-500: #1e5a9e;
+            --blue-400: #2b7bd6;
+            --blue-300: #4d9cf0;
+            --blue-200: #87bff7;
+            --blue-100: #b8dafb;
+            --blue-50: #e3f1fd;
+
+            --teal-500: #0d9488;
+            --teal-400: #14b8a6;
+            --teal-300: #5eead4;
+            --teal-100: #ccfbf1;
+
+            --amber-500: #f59e0b;
+            --amber-400: #fbbf24;
+            --amber-100: #fef3c7;
+
+            --red-500: #ef4444;
+            --red-400: #f87171;
+            --red-100: #fee2e2;
+
+            --green-500: #22c55e;
+            --green-400: #4ade80;
+            --green-100: #dcfce7;
+
+            --gray-900: #111827;
+            --gray-800: #1f2937;
+            --gray-700: #374151;
+            --gray-600: #4b5563;
+            --gray-500: #6b7280;
+            --gray-400: #9ca3af;
+            --gray-300: #d1d5db;
+            --gray-200: #e5e7eb;
+            --gray-100: #f3f4f6;
+            --gray-50: #f9fafb;
+
+            --white: #ffffff;
+
+            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.10), 0 8px 10px -6px rgba(0,0,0,0.04);
+            --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.04);
+            --shadow-glow: 0 0 40px rgba(43,123,214,0.15);
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-sans);
+            color: var(--gray-800);
+            background: var(--gray-50);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== Typography ===== */
+        h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; color: var(--gray-900); }
+        h1 { font-size: clamp(2.2rem, 5vw, 3.5rem); letter-spacing: -0.02em; }
+        h2 { font-size: clamp(1.8rem, 3.5vw, 2.5rem); letter-spacing: -0.01em; }
+        h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
+        p { color: var(--gray-600); font-size: 1.05rem; }
+
+        /* ===== Container ===== */
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+        .container-narrow { max-width: 900px; margin: 0 auto; padding: 0 2rem; }
+
+        /* ===== Section Spacing ===== */
+        section { padding: 5rem 0; }
+
+        /* ===== Nav ===== */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 0;
+            transition: box-shadow 0.3s;
+        }
+        .nav.scrolled { box-shadow: var(--shadow-md); }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto; padding: 0 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-logo {
+            display: flex; align-items: center; gap: 0.6rem;
+            font-weight: 700; font-size: 1.25rem; color: var(--blue-600);
+            text-decoration: none;
+        }
+        .nav-logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--blue-500), var(--teal-400));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.1rem;
+        }
+        .nav-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+        .nav-links a {
+            text-decoration: none; color: var(--gray-600); font-weight: 500;
+            font-size: 0.925rem; transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--blue-500); }
+        .nav-cta {
+            background: var(--blue-500); color: white !important;
+            padding: 0.5rem 1.25rem; border-radius: 8px;
+            transition: background 0.2s, transform 0.15s !important;
+        }
+        .nav-cta:hover {
+            background: var(--blue-600) !important;
+            transform: translateY(-1px);
+        }
+
+        /* ===== Hero ===== */
+        .hero {
+            padding: 8rem 0 5rem;
+            background: linear-gradient(170deg, var(--blue-50) 0%, var(--white) 40%, var(--teal-100) 100%);
+            position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; top: -200px; right: -300px;
+            width: 700px; height: 700px;
+            background: radial-gradient(circle, rgba(43,123,214,0.06) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .hero::after {
+            content: '';
+            position: absolute; bottom: -150px; left: -200px;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .hero-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+            position: relative; z-index: 1;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: var(--white); border: 1px solid var(--gray-200);
+            border-radius: 50px; padding: 0.4rem 1rem;
+            font-size: 0.85rem; font-weight: 600; color: var(--blue-600);
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+        .hero-badge-dot {
+            width: 8px; height: 8px; background: var(--green-500);
+            border-radius: 50%; animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .hero h1 { margin-bottom: 1.25rem; }
+        .hero h1 span { background: linear-gradient(135deg, var(--blue-500), var(--teal-500)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero-subtitle { font-size: 1.2rem; color: var(--gray-500); margin-bottom: 2rem; max-width: 500px; }
+        .hero-cta-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.85rem 1.75rem; border-radius: 10px;
+            font-weight: 600; font-size: 1rem; text-decoration: none;
+            transition: all 0.2s; cursor: pointer; border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+            color: white; box-shadow: var(--shadow-md), 0 0 0 0 rgba(43,123,214,0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), 0 0 0 4px rgba(43,123,214,0.15);
+        }
+        .btn-outline {
+            background: var(--white); color: var(--blue-600);
+            border: 2px solid var(--gray-200);
+        }
+        .btn-outline:hover { border-color: var(--blue-300); background: var(--blue-50); }
+
+        .hero-visual {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* ===== Animated Flow Diagram ===== */
+        .flow-diagram {
+            background: var(--white); border-radius: 20px;
+            padding: 2rem; box-shadow: var(--shadow-xl);
+            width: 100%; max-width: 500px;
+        }
+        .flow-step {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 0.9rem 1.15rem; margin-bottom: 0.5rem;
+            border-radius: 12px; background: var(--gray-50);
+            border: 1px solid var(--gray-100);
+            transition: all 0.3s; position: relative;
+        }
+        .flow-step:hover {
+            background: var(--blue-50); border-color: var(--blue-200);
+            transform: translateX(4px);
+        }
+        .flow-step-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; flex-shrink: 0;
+        }
+        .flow-step-icon.shopify { background: #96bf48; color: white; }
+        .flow-step-icon.process { background: var(--blue-500); color: white; }
+        .flow-step-icon.transform { background: var(--blue-600); color: white; }
+        .flow-step-icon.sap { background: var(--teal-500); color: white; }
+        .flow-step-info h4 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+        .flow-step-info p { font-size: 0.8rem; color: var(--gray-500); }
+        .flow-arrow {
+            display: flex; justify-content: center; padding: 0.2rem 0;
+            color: var(--gray-400); font-size: 1.2rem;
+        }
+
+        /* ===== Stats Section ===== */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
+            margin-top: -3rem; position: relative; z-index: 10;
+        }
+        .stat-card {
+            background: var(--white); border-radius: 16px; padding: 1.75rem;
+            text-align: center; box-shadow: var(--shadow-card);
+            border: 1px solid var(--gray-100);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+        .stat-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+        .stat-value {
+            font-size: 2.2rem; font-weight: 800; color: var(--gray-900);
+            line-height: 1;
+        }
+        .stat-label { font-size: 0.875rem; color: var(--gray-500); margin-top: 0.5rem; }
+
+        /* ===== Problem Section ===== */
+        .problem-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+        }
+        .problem-card {
+            background: var(--white); border-radius: 16px; padding: 2rem;
+            border-left: 4px solid var(--red-400);
+            box-shadow: var(--shadow-card); border: 1px solid var(--gray-100);
+        }
+        .problem-card h3 { color: var(--red-500); margin-bottom: 0.75rem; }
+        .problem-card .icon { font-size: 2rem; display: block; margin-bottom: 0.75rem; }
+
+        /* ===== Solution Section ===== */
+        .solution-section { background: var(--white); }
+        .comparison-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: 2rem; border-radius: 16px; overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+        .comparison-table th {
+            background: var(--gray-900); color: white; padding: 1rem 1.5rem;
+            text-align: left; font-weight: 600; font-size: 0.925rem;
+        }
+        .comparison-table td {
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-100);
+            font-size: 0.95rem;
+        }
+        .comparison-table tr:nth-child(even) td { background: var(--gray-50); }
+        .comparison-table .check { color: var(--green-500); font-weight: 700; }
+        .comparison-table .cross { color: var(--red-400); font-weight: 700; }
+        .comparison-table .highlight-row td { background: var(--blue-50) !important; font-weight: 600; }
+
+        /* ===== Features ===== */
+        .features-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.75rem;
+        }
+        .feature-card {
+            background: var(--white); border-radius: 16px; padding: 2rem;
+            border: 1px solid var(--gray-100); box-shadow: var(--shadow-card);
+            transition: all 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--blue-200);
+        }
+        .feature-icon {
+            width: 56px; height: 56px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; margin-bottom: 1.25rem;
+        }
+        .feature-icon.multi { background: #ede9fe; color: #7c3aed; }
+        .feature-icon.security { background: #fce7f3; color: #db2777; }
+        .feature-icon.dashboard { background: #e0f2fe; color: #0284c7; }
+        .feature-icon.retry { background: #fef3c7; color: #d97706; }
+        .feature-icon.extend { background: #dcfce7; color: #16a34a; }
+        .feature-icon.logs { background: #f1f5f9; color: #475569; }
+
+        /* ===== Charts Section ===== */
+        .chart-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+        }
+        .chart-card {
+            background: var(--white); border-radius: 16px; padding: 2rem;
+            box-shadow: var(--shadow-card); border: 1px solid var(--gray-100);
+        }
+        .chart-card h3 { margin-bottom: 1.25rem; font-size: 1.15rem; }
+        .chart-wrap { position: relative; width: 100%; }
+        .chart-wrap canvas { max-height: 280px; }
+
+        /* ===== How It Works (Timeline) ===== */
+        .timeline { position: relative; padding-left: 3rem; }
+        .timeline::before {
+            content: ''; position: absolute; left: 18px; top: 0; bottom: 0;
+            width: 3px; background: linear-gradient(to bottom, var(--blue-400), var(--teal-400));
+            border-radius: 2px;
+        }
+        .timeline-step {
+            position: relative; margin-bottom: 2.5rem; padding: 1.5rem 2rem;
+            background: var(--white); border-radius: 16px;
+            box-shadow: var(--shadow-card); border: 1px solid var(--gray-100);
+            transition: transform 0.2s;
+        }
+        .timeline-step:hover { transform: translateX(6px); }
+        .timeline-step::before {
+            content: ''; position: absolute; left: -2.65rem; top: 1.8rem;
+            width: 18px; height: 18px;
+            background: var(--white); border: 3px solid var(--blue-500);
+            border-radius: 50%; z-index: 2;
+        }
+        .timeline-step-num {
+            position: absolute; top: -0.85rem; left: 1.5rem;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+            color: white; font-weight: 700; font-size: 0.85rem;
+            padding: 0.25rem 0.85rem; border-radius: 50px;
+        }
+        .timeline-step h4 { margin-bottom: 0.4rem; color: var(--gray-900); }
+        .timeline-step p { font-size: 0.95rem; }
+
+        /* ===== Dashboard Preview ===== */
+        .dashboard-preview {
+            background: var(--gray-800); border-radius: 20px; padding: 1.5rem;
+            box-shadow: var(--shadow-xl); overflow: hidden;
+        }
+        .dashboard-preview-header {
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 1.25rem; padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--gray-700);
+        }
+        .dashboard-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dashboard-dot.red { background: #ff5f56; }
+        .dashboard-dot.amber { background: #ffbd2e; }
+        .dashboard-dot.green { background: #27c93f; }
+        .dashboard-preview-title {
+            color: var(--gray-400); font-size: 0.8rem; margin-left: 0.5rem;
+        }
+        .dashboard-mock-stats {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+        .dashboard-mock-stat {
+            background: var(--gray-700); border-radius: 10px; padding: 1rem;
+            text-align: center;
+        }
+        .dashboard-mock-stat .val {
+            font-size: 1.5rem; font-weight: 700; color: white; line-height: 1;
+        }
+        .dashboard-mock-stat .lbl { font-size: 0.7rem; color: var(--gray-400); margin-top: 0.3rem; }
+        .dashboard-mock-table {
+            width: 100%; border-collapse: collapse;
+        }
+        .dashboard-mock-table th {
+            text-align: left; font-size: 0.7rem; color: var(--gray-400);
+            padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--gray-700);
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .dashboard-mock-table td {
+            padding: 0.55rem 0.75rem; font-size: 0.8rem; color: var(--gray-300);
+            border-bottom: 1px solid var(--gray-700);
+        }
+        .status-badge {
+            display: inline-block; padding: 0.2rem 0.6rem; border-radius: 50px;
+            font-size: 0.7rem; font-weight: 600;
+        }
+        .status-badge.success { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .status-badge.failed { background: rgba(239,68,68,0.15); color: #f87171; }
+        .status-badge.pending { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+        /* ===== Who It's For ===== */
+        .audience-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
+        }
+        .audience-card {
+            background: var(--white); border-radius: 16px; padding: 2rem 1.5rem;
+            text-align: center; border: 1px solid var(--gray-100);
+            box-shadow: var(--shadow-card); transition: transform 0.2s;
+        }
+        .audience-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+        .audience-avatar {
+            width: 64px; height: 64px; border-radius: 50%;
+            margin: 0 auto 1rem; display: flex; align-items: center;
+            justify-content: center; font-size: 2rem;
+        }
+        .audience-avatar.owner { background: #ede9fe; }
+        .audience-avatar.ops { background: #e0f2fe; }
+        .audience-avatar.acct { background: #dcfce7; }
+        .audience-avatar.it { background: #fef3c7; }
+        .audience-card h4 { margin-bottom: 0.5rem; font-size: 1.05rem; }
+        .audience-card p { font-size: 0.875rem; }
+
+        /* ===== Testimonial ===== */
+        .testimonial {
+            background: linear-gradient(135deg, var(--blue-50), var(--teal-100));
+            border-radius: 20px; padding: 3rem; position: relative; overflow: hidden;
+        }
+        .testimonial::before {
+            content: '\201C'; position: absolute; top: -20px; left: 20px;
+            font-size: 10rem; color: rgba(0,0,0,0.03); font-family: Georgia, serif;
+            line-height: 1;
+        }
+        .testimonial-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center;
+            position: relative;
+        }
+        .testimonial-metric {
+            text-align: center; background: var(--white); border-radius: 16px;
+            padding: 2rem 1.5rem; box-shadow: var(--shadow-md);
+        }
+        .testimonial-metric .big { font-size: 3rem; font-weight: 800; color: var(--blue-600); line-height: 1; }
+        .testimonial-metric .sub { font-size: 0.9rem; color: var(--gray-500); margin-top: 0.25rem; }
+
+        /* ===== Footer ===== */
+        .footer {
+            background: var(--gray-900); color: var(--gray-400); padding: 3rem 0;
+        }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; }
+        .footer h4 { color: white; margin-bottom: 1rem; font-size: 1.05rem; }
+        .footer a { color: var(--gray-400); text-decoration: none; transition: color 0.2s; }
+        .footer a:hover { color: var(--blue-300); }
+        .footer-links { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 1024px) {
+            .hero-grid { grid-template-columns: 1fr; }
+            .stats-grid, .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .problem-grid { grid-template-columns: 1fr; }
+            .chart-grid { grid-template-columns: 1fr; }
+            .audience-grid { grid-template-columns: repeat(2, 1fr); }
+            .testimonial-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .stats-grid, .features-grid, .audience-grid { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+            .dashboard-mock-stats { grid-template-columns: repeat(2, 1fr); }
+            section { padding: 3rem 0; }
+            .hero { padding: 6rem 0 3rem; }
+        }
+
+        /* ===== Animations ===== */
+        .fade-up {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+        /* ===== Section Headers ===== */
+        .section-header { text-align: center; margin-bottom: 3.5rem; }
+        .section-header .overline {
+            display: inline-block; font-size: 0.825rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            color: var(--blue-500); margin-bottom: 0.75rem;
+        }
+        .section-header h2 { margin-bottom: 1rem; }
+        .section-header p { max-width: 600px; margin: 0 auto; color: var(--gray-500); }
+
+        /* ===== Background sections ===== */
+        .bg-white { background: var(--white); }
+        .bg-gradient { background: linear-gradient(170deg, var(--blue-50), var(--white), var(--teal-100)); }
+    </style>
+</head>
+<body>
+
+<!-- ===== Navigation ===== -->
+<nav class="nav" id="navbar">
+    <div class="nav-inner">
+        <a href="#" class="nav-logo">
+            <div class="nav-logo-icon">⟷</div>
+            B1Connector
+        </a>
+        <ul class="nav-links">
+            <li><a href="#problem">The Problem</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#dashboard">Dashboard</a></li>
+            <li><a href="#contact" class="nav-cta">Learn More</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<header class="hero">
+    <div class="container">
+        <div class="hero-grid">
+            <div class="fade-up">
+                <div class="hero-badge">
+                    <span class="hero-badge-dot"></span>
+                    Automate Your Business Workflow
+                </div>
+                <h1>
+                    Connect Your Online Store to <span>SAP Business One</span> — Automatically
+                </h1>
+                <p class="hero-subtitle">
+                    B1Connector eliminates manual data entry by syncing orders from your e-commerce
+                    platform directly into your ERP system. Fast, secure, and fully automated.
+                </p>
+                <div class="hero-cta-group">
+                    <a href="#how-it-works" class="btn btn-primary">
+                        <span>📖</span> See How It Works
+                    </a>
+                    <a href="#features" class="btn btn-outline">
+                        <span>✨</span> Explore Features
+                    </a>
+                </div>
+            </div>
+            <div class="hero-visual fade-up">
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div class="flow-step-icon shopify">🛒</div>
+                        <div class="flow-step-info">
+                            <h4>Shopify Store</h4>
+                            <p>Customer places a new order</p>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">⬇</div>
+                    <div class="flow-step">
+                        <div class="flow-step-icon process">📨</div>
+                        <div class="flow-step-info">
+                            <h4>B1Connector Receives</h4>
+                            <p>Webhook notification is verified &amp; secured</p>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">⬇</div>
+                    <div class="flow-step">
+                        <div class="flow-step-icon transform">🔄</div>
+                        <div class="flow-step-info">
+                            <h4>Translation Layer</h4>
+                            <p>Order data is mapped to SAP B1 format</p>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">⬇</div>
+                    <div class="flow-step">
+                        <div class="flow-step-icon sap">📊</div>
+                        <div class="flow-step-info">
+                            <h4>SAP Business One</h4>
+                            <p>Sales order created automatically ✓</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ===== Stats Bar ===== -->
+<section style="padding: 0;">
+    <div class="container">
+        <div class="stats-grid fade-up">
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-value">&lt;5s</div>
+                <div class="stat-label">Average sync time from order to SAP</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔒</div>
+                <div class="stat-value">256-bit</div>
+                <div class="stat-label">AES encryption for all credentials</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏪</div>
+                <div class="stat-value">Unlimited</div>
+                <div class="stat-label">Stores supported simultaneously</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📋</div>
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Audit trail — every action is logged</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== The Problem ===== -->
+<section id="problem">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">The Problem</span>
+            <h2>Manual Data Entry Is Costing Your Business</h2>
+            <p>Without automation, every online order must be manually re-entered into SAP Business One. This creates bottlenecks, errors, and lost revenue.</p>
+        </div>
+        <div class="problem-grid">
+            <div class="problem-card fade-up">
+                <span class="icon">⏳</span>
+                <h3>Wasted Time</h3>
+                <p>Staff spend hours each day copy-pasting order details from Shopify into SAP B1. With dozens or hundreds of daily orders, this quickly becomes a full-time job — costing you thousands in payroll every month.</p>
+            </div>
+            <div class="problem-card fade-up">
+                <span class="icon">⚠️</span>
+                <h3>Human Error</h3>
+                <p>Typos in quantities, wrong SKUs, missed line items — manual entry inevitably leads to mistakes. Each error means incorrect inventory, delayed shipments, and unhappy customers.</p>
+            </div>
+            <div class="problem-card fade-up">
+                <span class="icon">📉</span>
+                <h3>No Real-Time Visibility</h3>
+                <p>When your store and ERP don't talk to each other, you can't see your true inventory levels, outstanding orders, or cash flow in real time. Decisions are made on stale data.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Before / After ===== -->
+<section class="bg-white">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">The Difference</span>
+            <h2>Before B1Connector vs. After</h2>
+            <p>See how automation transforms your daily operations.</p>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="comparison-table fade-up">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Manual Process</th>
+                        <th>With B1Connector</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Order entry</strong></td>
+                        <td>Staff types each order into SAP B1</td>
+                        <td class="check">✓ Fully automated in seconds</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Error rate</strong></td>
+                        <td>3–5% of orders have data entry errors</td>
+                        <td class="check">✓ Near-zero errors</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Time per order</strong></td>
+                        <td>3–5 minutes of manual work</td>
+                        <td class="check">✓ Less than 5 seconds</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Order backlog</strong></td>
+                        <td>Orders pile up overnight &amp; weekends</td>
+                        <td class="check">✓ Processed 24/7, no backlog</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Inventory accuracy</strong></td>
+                        <td>Delayed updates, frequent discrepancies</td>
+                        <td class="check">✓ Real-time sync available</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Audit trail</strong></td>
+                        <td>No unified log — hard to trace issues</td>
+                        <td class="check">✓ Every action timestamped &amp; logged</td>
+                    </tr>
+                    <tr class="highlight-row">
+                        <td><strong>Staff cost (100 orders/day)</strong></td>
+                        <td>~$35,000/year in data entry labor</td>
+                        <td class="check">✓ Near zero — redeploy staff to growth</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ===== How It Works ===== -->
+<section id="how-it-works" class="bg-gradient">
+    <div class="container-narrow">
+        <div class="section-header fade-up">
+            <span class="overline">How It Works</span>
+            <h2>A Simple, Reliable Pipeline</h2>
+            <p>B1Connector acts like a secure post office for your business data — receiving, verifying, translating, and delivering every order automatically.</p>
+        </div>
+        <div class="timeline">
+            <div class="timeline-step fade-up">
+                <span class="timeline-step-num">Step 1</span>
+                <h4>A Customer Places an Order</h4>
+                <p>A customer completes a purchase on your Shopify store. Nothing changes on their end — the checkout experience is exactly the same.</p>
+            </div>
+            <div class="timeline-step fade-up">
+                <span class="timeline-step-num">Step 2</span>
+                <h4>Shopify Sends a Notification (Webhook)</h4>
+                <p>Shopify instantly sends a secure notification to B1Connector containing all order details: customer info, line items, quantities, prices, and shipping address.</p>
+            </div>
+            <div class="timeline-step fade-up">
+                <span class="timeline-step-num">Step 3</span>
+                <h4>B1Connector Verifies Authenticity</h4>
+                <p>Before processing, B1Connector cryptographically verifies the notification is genuine — not a fake or malicious request — using industry-standard HMAC signature validation.</p>
+            </div>
+            <div class="timeline-step fade-up">
+                <span class="timeline-step-num">Step 4</span>
+                <h4>Translation &amp; Routing</h4>
+                <p>B1Connector identifies which company (tenant) the store belongs to, decrypts the appropriate SAP B1 credentials, and translates the Shopify order format into SAP B1's expected structure.</p>
+            </div>
+            <div class="timeline-step fade-up">
+                <span class="timeline-step-num">Step 5</span>
+                <h4>Sales Order Created in SAP B1</h4>
+                <p>The translated order is sent to SAP Business One's Service Layer API, creating a complete sales order with all line items, quantities, and pricing — automatically.</p>
+            </div>
+            <div class="timeline-step fade-up">
+                <span class="timeline-step-num">Step 6</span>
+                <h4>Logged &amp; Monitored</h4>
+                <p>Every step is recorded with timestamps. If anything fails (e.g., SAP B1 is temporarily offline), the system automatically retries and logs the error for your review.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Charts: The Impact ===== -->
+<section class="bg-white">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">The Impact</span>
+            <h2>Measurable Results You Can Expect</h2>
+            <p>Real data from businesses that automated their order-to-ERP workflow.</p>
+        </div>
+        <div class="chart-grid">
+            <div class="chart-card fade-up">
+                <h3>📊 Time Saved Per Day (Hours)</h3>
+                <div class="chart-wrap">
+                    <canvas id="chartTimeSaved"></canvas>
+                </div>
+                <p style="font-size:0.85rem; color: var(--gray-500); margin-top: 1rem; text-align:center;">
+                    Manual data entry scales linearly — automation eliminates it entirely.
+                </p>
+            </div>
+            <div class="chart-card fade-up">
+                <h3>📉 Error Rate Reduction</h3>
+                <div class="chart-wrap">
+                    <canvas id="chartErrorRate"></canvas>
+                </div>
+                <p style="font-size:0.85rem; color: var(--gray-500); margin-top: 1rem; text-align:center;">
+                    Human error is unavoidable; automated translation ensures consistent accuracy.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Features ===== -->
+<section id="features">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">Features</span>
+            <h2>Built for Business</h2>
+            <p>Every feature is designed with security, scalability, and ease of use in mind.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card fade-up">
+                <div class="feature-icon multi">🏪</div>
+                <h3>Multi-Store Support</h3>
+                <p>Connect as many Shopify stores as you need. Each store's data, credentials, and logs are completely isolated for security and compliance.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-icon security">🔐</div>
+                <h3>Enterprise-Grade Security</h3>
+                <p>All API keys, webhook secrets, and SAP B1 passwords are encrypted with AES-256 before storage. Plain-text credentials never touch the database.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-icon dashboard">📊</div>
+                <h3>Live Dashboard</h3>
+                <p>Monitor every sync job in real time. See success rates, pending jobs, and detailed logs. Separate admin and client views for fine-grained access control.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-icon retry">🔄</div>
+                <h3>Automatic Retry</h3>
+                <p>If SAP B1 is temporarily unavailable, B1Connector automatically retries failed jobs. No orders are ever lost — they stay in the queue until successfully processed.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-icon extend">🔌</div>
+                <h3>Designed to Grow</h3>
+                <p>While Shopify is the first connector, B1Connector is architected so new platforms — WooCommerce, Magento, BigCommerce — can be added without rebuilding the system.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-icon logs">📋</div>
+                <h3>Complete Audit Trail</h3>
+                <p>Every action is timestamped and logged: when the order arrived, when it was processed, which system it was sent to, and whether it succeeded or failed.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Dashboard Preview ===== -->
+<section id="dashboard" class="bg-white">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">The Dashboard</span>
+            <h2>Full Visibility at a Glance</h2>
+            <p>The B1Connector dashboard gives you real-time oversight of every sync job across all your stores.</p>
+        </div>
+        <div style="max-width: 850px; margin: 0 auto;" class="fade-up">
+            <div class="dashboard-preview">
+                <div class="dashboard-preview-header">
+                    <span class="dashboard-dot red"></span>
+                    <span class="dashboard-dot amber"></span>
+                    <span class="dashboard-dot green"></span>
+                    <span class="dashboard-preview-title">B1Connector Dashboard — Admin View</span>
+                </div>
+                <div class="dashboard-mock-stats">
+                    <div class="dashboard-mock-stat">
+                        <div class="val" style="color:#fbbf24;">1,247</div>
+                        <div class="lbl">Total Jobs</div>
+                    </div>
+                    <div class="dashboard-mock-stat">
+                        <div class="val" style="color:#4ade80;">1,189</div>
+                        <div class="lbl">Completed</div>
+                    </div>
+                    <div class="dashboard-mock-stat">
+                        <div class="val" style="color:#f87171;">23</div>
+                        <div class="lbl">Failed</div>
+                    </div>
+                    <div class="dashboard-mock-stat">
+                        <div class="val" style="color:#60a5fa;">35</div>
+                        <div class="lbl">Pending / In Progress</div>
+                    </div>
+                </div>
+                <table class="dashboard-mock-table">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Store</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#1247</td><td>Main Store</td><td>Order Sync</td>
+                            <td><span class="status-badge success">Completed</span></td>
+                            <td>2s ago</td>
+                        </tr>
+                        <tr>
+                            <td>#1246</td><td>Outlet Store</td><td>Inventory</td>
+                            <td><span class="status-badge success">Completed</span></td>
+                            <td>15s ago</td>
+                        </tr>
+                        <tr>
+                            <td>#1245</td><td>Main Store</td><td>Order Sync</td>
+                            <td><span class="status-badge failed">Failed</span></td>
+                            <td>1m ago</td>
+                        </tr>
+                        <tr>
+                            <td>#1244</td><td>Wholesale</td><td>Order Sync</td>
+                            <td><span class="status-badge pending">Pending</span></td>
+                            <td>3m ago</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="text-align:center; margin-top: 0.75rem; font-size: 0.85rem; color: var(--gray-500);">
+                ▲ Dashboard preview — actual interface shows real-time data with filtering and detailed log inspection.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Who It's For ===== -->
+<section class="bg-gradient">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">Who Benefits</span>
+            <h2>Built for Your Entire Team</h2>
+            <p>B1Connector creates value across every role that touches your order-to-ERP workflow.</p>
+        </div>
+        <div class="audience-grid">
+            <div class="audience-card fade-up">
+                <div class="audience-avatar owner">👤</div>
+                <h4>Business Owner</h4>
+                <p>Reclaim thousands in payroll costs. Orders flow from store to ERP without a single person involved — freeing your team for higher-value work.</p>
+            </div>
+            <div class="audience-card fade-up">
+                <div class="audience-avatar ops">📦</div>
+                <h4>Operations Manager</h4>
+                <p>End reconciliation headaches. What's in Shopify always matches what's in SAP B1. Real-time inventory visibility across all channels.</p>
+            </div>
+            <div class="audience-card fade-up">
+                <div class="audience-avatar acct">🧾</div>
+                <h4>Accountant</h4>
+                <p>Sales orders appear in SAP B1 instantly, so your financial reports are always current. No more month-end surprises from un-entered orders.</p>
+            </div>
+            <div class="audience-card fade-up">
+                <div class="audience-avatar it">💻</div>
+                <h4>IT Manager</h4>
+                <p>One centralized system to manage all store-to-ERP connections. Full logging, monitoring, and secure credential management — all in one place.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== ROI Estimate ===== -->
+<section class="bg-white">
+    <div class="container">
+        <div class="section-header fade-up">
+            <span class="overline">ROI Estimate</span>
+            <h2>What Automation Means for Your Bottom Line</h2>
+            <p>Conservative estimates based on a business processing 100 orders per day.</p>
+        </div>
+        <div class="chart-grid">
+            <div class="chart-card fade-up">
+                <h3>💰 Annual Cost Comparison</h3>
+                <div class="chart-wrap">
+                    <canvas id="chartCostComparison"></canvas>
+                </div>
+            </div>
+            <div class="chart-card fade-up">
+                <h3>📈 Cumulative Savings Over Time</h3>
+                <div class="chart-wrap">
+                    <canvas id="chartSavings"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Testimonial / Callout ===== -->
+<section>
+    <div class="container">
+        <div class="testimonial fade-up">
+            <div class="testimonial-grid">
+                <div>
+                    <h2 style="margin-bottom: 1rem;">"The connector between your store and your ERP shouldn't be a person."</h2>
+                    <p style="font-size: 1.1rem; color: var(--gray-600);">
+                        B1Connector replaces hours of daily manual data entry with a secure, automated pipeline.
+                        It's like hiring a full-time data entry specialist — except it costs a fraction of a salary,
+                        works 24/7, and never makes mistakes.
+                    </p>
+                </div>
+                <div class="testimonial-metric">
+                    <div class="big">~95%</div>
+                    <div class="sub">Reduction in manual data entry time</div>
+                    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                        <div class="big" style="font-size: 2rem;">24/7</div>
+                        <div class="sub">Unattended operation — orders process even when you sleep</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section id="contact" style="background: linear-gradient(135deg, var(--blue-600), var(--blue-800)); color: white; text-align: center;">
+    <div class="container-narrow fade-up">
+        <h2 style="color: white; margin-bottom: 1rem;">Ready to Automate Your Order Workflow?</h2>
+        <p style="color: var(--blue-200); font-size: 1.1rem; margin-bottom: 2rem;">
+            Stop wasting time on manual data entry. Let B1Connector handle the bridge between your store and SAP Business One.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="#" class="btn btn-primary" style="background: white; color: var(--blue-700); box-shadow: var(--shadow-lg);">
+                📅 Schedule a Demo
+            </a>
+            <a href="#" class="btn btn-outline" style="border-color: rgba(255,255,255,0.3); color: white;">
+                📄 Download Datasheet
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+                    <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--blue-500),var(--teal-400));border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;">⟷</div>
+                    <span style="color:white;font-weight:700;font-size:1.1rem;">B1Connector</span>
+                </div>
+                <p style="font-size:0.875rem;">The automated bridge between your e-commerce platform and SAP Business One. Secure, scalable, and built for business.</p>
+            </div>
+            <div>
+                <h4>Product</h4>
+                <ul class="footer-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#dashboard">Dashboard</a></li>
+                    <li><a href="#">Security</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Company</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Contact</a></li>
+                    <li><a href="#">Documentation</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        <div style="border-top:1px solid var(--gray-700);margin-top:2.5rem;padding-top:1.5rem;text-align:center;font-size:0.825rem;">
+            &copy; 2026 B1Connector. All rights reserved. Built for businesses that value their time.
+        </div>
+    </div>
+</footer>
+
+<!-- ===== Chart.js & Animations ===== -->
+<script>
+    // ---- Scroll animations ----
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // ---- Navbar scroll effect ----
+    window.addEventListener('scroll', () => {
+        const nav = document.getElementById('navbar');
+        if (window.scrollY > 20) {
+            nav.classList.add('scrolled');
+        } else {
+            nav.classList.remove('scrolled');
+        }
+    });
+
+    // ---- Chart.js defaults ----
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#6b7280';
+
+    // ---- Chart 1: Time Saved Per Day ----
+    new Chart(document.getElementById('chartTimeSaved'), {
+        type: 'bar',
+        data: {
+            labels: ['10 orders', '50 orders', '100 orders', '200 orders', '500 orders'],
+            datasets: [
+                {
+                    label: 'Manual (hours/day)',
+                    data: [0.6, 3.0, 6.0, 12.0, 30.0],
+                    backgroundColor: 'rgba(239,68,68,0.7)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                },
+                {
+                    label: 'Automated — near zero human effort',
+                    data: [0.01, 0.03, 0.06, 0.12, 0.3],
+                    backgroundColor: 'rgba(34,197,94,0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25 } },
+                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + ' hrs' } }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Hours per day' },
+                    ticks: { callback: v => v + 'h' }
+                }
+            }
+        }
+    });
+
+    // ---- Chart 2: Error Rate Reduction ----
+    new Chart(document.getElementById('chartErrorRate'), {
+        type: 'line',
+        data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8'],
+            datasets: [
+                {
+                    label: 'Manual entry errors (%)',
+                    data: [4.2, 3.8, 4.5, 3.9, 4.1, 4.3, 3.7, 4.0],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239,68,68,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#ef4444',
+                },
+                {
+                    label: 'With B1Connector (%)',
+                    data: [0.05, 0.03, 0.04, 0.02, 0.01, 0.02, 0.03, 0.01],
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#22c55e',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25 } },
+                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(2) + '%' } }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Error rate (%)' },
+                    ticks: { callback: v => v + '%' }
+                }
+            }
+        }
+    });
+
+    // ---- Chart 3: Annual Cost Comparison ----
+    new Chart(document.getElementById('chartCostComparison'), {
+        type: 'bar',
+        data: {
+            labels: ['Data Entry Labor', 'Error Correction', 'Delayed Shipments', 'IT Maintenance'],
+            datasets: [
+                {
+                    label: 'Manual Process',
+                    data: [35000, 12000, 8000, 5000],
+                    backgroundColor: 'rgba(239,68,68,0.6)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                },
+                {
+                    label: 'With B1Connector',
+                    data: [2000, 800, 500, 3000],
+                    backgroundColor: 'rgba(34,197,94,0.6)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25 } },
+                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw.toLocaleString() } }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Annual cost (USD)' },
+                    ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' }
+                }
+            }
+        }
+    });
+
+    // ---- Chart 4: Cumulative Savings ----
+    new Chart(document.getElementById('chartSavings'), {
+        type: 'line',
+        data: {
+            labels: ['Month 1', 'Month 3', 'Month 6', 'Month 12', 'Month 18', 'Month 24'],
+            datasets: [
+                {
+                    label: 'Cumulative savings',
+                    data: [4000, 12000, 24000, 48000, 72000, 96000],
+                    borderColor: '#1e5a9e',
+                    backgroundColor: 'rgba(30,90,158,0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#1e5a9e',
+                    borderWidth: 3,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => 'Saved: $' + ctx.raw.toLocaleString() } }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Dollars saved (USD)' },
+                    ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
