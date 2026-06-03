@@ -24,6 +24,7 @@ public static class ShopifyInventoryHandler
         HttpRequest request,
         [FromServices] TenantService tenantService,
         [FromServices] IServiceScopeFactory scopeFactory,
+        [FromServices] IConfiguration config,
         [FromServices] ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
@@ -70,8 +71,8 @@ public static class ShopifyInventoryHandler
             shopDomain, inventoryRequest.Items.Count);
 
         // Build a per-tenant SAP B1 client using tenant credentials
-        using var scope = scopeFactory.CreateScope();
-        var sapOptions = tenantService.GetServiceLayerOptions(tenant);
+         using var scope = scopeFactory.CreateScope();
+       /* var sapOptions = tenantService.GetServiceLayerOptions(tenant);
         var httpFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
         var httpClient = httpFactory.CreateClient();
         httpClient.BaseAddress = new Uri(sapOptions.BaseUrl);
@@ -81,7 +82,31 @@ public static class ShopifyInventoryHandler
         var sapClient = new ServiceLayerClient(
             httpClient,
             Microsoft.Extensions.Options.Options.Create(sapOptions),
-            sapLogger);
+            sapLogger); */
+        // Build a per-tenant SAP B1 client — mock or real based on config
+        var useMock = config.GetValue<bool>("UseMockServiceLayer");
+
+        ISapServiceLayerClient sapClient;
+        HttpClient? httpClient = null;
+
+        if (useMock)
+        {
+            sapClient = scope.ServiceProvider.GetRequiredService<ISapServiceLayerClient>();
+        }
+        else
+        {
+            var sapOptions = tenantService.GetServiceLayerOptions(tenant);
+            httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(sapOptions.BaseUrl)
+            };
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+            var sapLogger = loggerFactory.CreateLogger<ServiceLayerClient>();
+            sapClient = new ServiceLayerClient(
+                httpClient,
+                Microsoft.Extensions.Options.Options.Create(sapOptions),
+                sapLogger);
+        }
 
         await sapClient.LoginAsync();
 
@@ -123,6 +148,7 @@ public static class ShopifyInventoryHandler
         finally
         {
             await sapClient.LogoutAsync();
+            httpClient?.Dispose();
         }
     }
 
