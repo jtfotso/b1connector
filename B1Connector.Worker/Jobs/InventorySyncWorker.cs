@@ -12,6 +12,7 @@ public class InventorySyncWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<InventorySyncWorker> _logger;
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+    private int _syncCount = 0;
 
     public InventorySyncWorker(
         IServiceScopeFactory scopeFactory,
@@ -30,6 +31,12 @@ public class InventorySyncWorker : BackgroundService
             try
             {
                 await SyncDueTenantsAsync(stoppingToken);
+                _syncCount++;
+
+                // Clean up old logs once a day
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                await CleanupOldLogsAsync(db, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -201,6 +208,21 @@ public class InventorySyncWorker : BackgroundService
         {
             await sapClient.LogoutAsync();
             httpClient?.Dispose();
+        }
+    }
+
+    private async Task CleanupOldLogsAsync(AppDbContext db, CancellationToken ct)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var old = await db.InventoryStockLogs
+            .Where(l => l.CreatedAt < cutoff)
+            .ToListAsync(ct);
+
+        if (old.Count > 0)
+        {
+            db.InventoryStockLogs.RemoveRange(old);
+            await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Cleaned up {Count} old inventory logs", old.Count);
         }
     }
 }
