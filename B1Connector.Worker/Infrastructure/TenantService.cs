@@ -100,4 +100,12 @@ public class TenantService
         tenant.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
     }
+
+    public string GetShopifyApiKey(Tenant tenant)
+    {
+        if (tenant.ShopifyApiKey == "encrypted-placeholder")
+            return tenant.ShopifyApiKey;
+
+        return _encryption.Decrypt(tenant.ShopifyApiKey);
+    }
 }

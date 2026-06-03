@@ -48,6 +48,8 @@ else
 builder.Services.AddScoped<SyncJobQueue>();
 builder.Services.AddScoped<ShopifyOrderMapper>(); 
 builder.Services.AddHostedService<SyncJobWorker>();
+builder.Services.AddHostedService<InventorySyncWorker>();
+builder.Services.AddScoped<ShopifyInventoryApiClient>();
 
 // Infrastructure
 builder.Services.AddScoped<EncryptionService>();

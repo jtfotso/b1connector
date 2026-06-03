@@ -4,6 +4,7 @@ using B1Connector.Worker.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace B1Connector.Worker.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603020858_AddInventorySyncTables")]
+    partial class AddInventorySyncTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,19 +46,15 @@ namespace B1Connector.Worker.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<double>("QuantityInB1")
-                        .HasColumnType("float");
-
-                    b.Property<double?>("QuantityInShopify")
-                        .HasColumnType("float");
+                    b.Property<int>("QuantityInB1")
+                        .HasColumnType("int");
 
                     b.Property<bool>("ShopifyUpdated")
                         .HasColumnType("bit");
 
-                    b.Property<string>("TenantId")
-                        .IsRequired()
+                    b.Property<int>("TenantId")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("int");
 
                     b.Property<string>("WarehouseCode")
                         .IsRequired()

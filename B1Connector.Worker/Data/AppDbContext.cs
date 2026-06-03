@@ -10,6 +10,8 @@ public class AppDbContext : DbContext
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
     public DbSet<SyncLog> SyncLogs => Set<SyncLog>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<TenantSyncConfig> TenantSyncConfigs => Set<TenantSyncConfig>();
+    public DbSet<InventoryStockLog> InventoryStockLogs => Set<InventoryStockLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +86,29 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(e => e.ShopDomain)
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<TenantSyncConfig>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.WarehouseCode).HasMaxLength(50);
+            entity.Property(e => e.ItemCodes).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ShopifyLocationId).HasMaxLength(100);
+
+            entity.HasIndex(e => e.TenantId).IsUnique();
+        });
+
+        modelBuilder.Entity<InventoryStockLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ItemCode).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.WarehouseCode).HasMaxLength(50);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }
