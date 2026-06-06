@@ -84,6 +84,24 @@ public class TenantService
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation("Tenant created: {ShopDomain}", shopDomain);
+
+        //Auto-create default sync config for new tenant
+        var syncConfig = new TenantSyncConfig
+        {
+            TenantId = tenant.TenantId,
+            IsInventorySyncEnabled = false,
+            SyncIntervalMinutes = 15,
+            WarehouseCode = "DEFAULT",
+            ItemCodes = string.Empty,
+            ShopifyLocationId = string.Empty,
+            LastInventorySyncAt = null,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.TenantSyncConfigs.Add(syncConfig);
+        await _db.SaveChangesAsync(ct);
+
         return tenant;
     }
 

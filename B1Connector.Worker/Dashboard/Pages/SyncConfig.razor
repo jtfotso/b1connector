@@ -1,0 +1,345 @@
+@page "/dashboard/sync-config"
+@rendermode InteractiveServer
+@inject DashboardAuthService AuthService
+@inject NavigationManager Nav
+@inject AppDbContext Db
+@using B1Connector.Worker.Data
+
+@using Microsoft.EntityFrameworkCore
+@using B1Connector.Worker.Models
+
+@if (!_authenticated)
+{
+    <p style="font-family:sans-serif;padding:2rem;">Checking authentication...</p>
+}
+else
+{
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem;">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
+            <h1 style="margin:0;font-size:22px;">Inventory Sync Config</h1>
+            <a href="/dashboard?key=@Uri.EscapeDataString(Key ?? string.Empty)"
+               style="font-size:13px;color:#2563eb;text-decoration:none;">← Back to dashboard</a>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div style="@(_messageIsError ? ErrorBoxStyle : SuccessBoxStyle);margin-bottom:1.5rem;">
+                <p style="margin:0;font-size:13px;">@_message</p>
+            </div>
+        }
+
+        @foreach (var config in _configs)
+        {
+            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:1.5rem;margin-bottom:1.25rem;">
+
+                <!-- Header row -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+                    <div>
+                        <h2 style="font-size:15px;font-weight:600;margin:0 0 4px;">
+                            @config.TenantId
+                        </h2>
+                        <span style="@BadgeStyle(config.IsInventorySyncEnabled)">
+                            @(config.IsInventorySyncEnabled ? "Sync enabled" : "Sync disabled")
+                        </span>
+                        @if (config.LastInventorySyncAt is not null)
+                        {
+                            <span style="font-size:12px;color:#9CA3AF;margin-left:8px;">
+                                Last sync: @config.LastInventorySyncAt?.ToString("dd MMM HH:mm")
+                            </span>
+                        }
+                    </div>
+                    @if (_editingTenantId != config.TenantId)
+                    {
+                        <button @onclick="() => StartEdit(config)"
+                                style="@EditBtnStyle">
+                            Edit
+                        </button>
+                    }
+                </div>
+
+                @if (_editingTenantId == config.TenantId && _editForm is not null)
+                {
+                    <!-- Edit form -->
+                    <div style="@FieldGroupStyle">
+                        <label style="@LabelStyle">
+                            <input type="checkbox" @bind="_editForm.IsInventorySyncEnabled"
+                                   style="margin-right:6px;" />
+                            Enable inventory sync
+                        </label>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                        <div>
+                            <label style="@LabelStyle">Sync interval</label>
+                            <select @bind="_editForm.SyncIntervalMinutes" style="@InputStyle">
+                                <option value="15">Every 15 minutes</option>
+                                <option value="30">Every 30 minutes</option>
+                                <option value="60">Every hour</option>
+                                <option value="120">Every 2 hours</option>
+                                <option value="360">Every 6 hours</option>
+                                <option value="720">Every 12 hours</option>
+                                <option value="1440">Once a day</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="@LabelStyle">Warehouse Code</label>
+                            <input @bind="_editForm.WarehouseCode"
+                                   placeholder="01"
+                                   style="@InputStyle" />
+                        </div>
+                    </div>
+
+                    <div style="@FieldGroupStyle">
+                        <label style="@LabelStyle">Item Codes</label>
+                        <textarea @bind="_editForm.ItemCodes"
+                                  rows="3"
+                                  placeholder="ITEM-001, ITEM-002, ITEM-003"
+                                  style="@InputStyle;resize:vertical;"></textarea>
+                        <span style="@HintStyle">
+                            Comma-separated SAP B1 item codes. Leave empty to sync all items.
+                        </span>
+                    </div>
+
+                    <div style="@FieldGroupStyle">
+                        <label style="@LabelStyle">Shopify Location ID</label>
+                        <input @bind="_editForm.ShopifyLocationId"
+                               placeholder="12345678"
+                               style="@InputStyle" />
+                        <span style="@HintStyle">
+                            Shopify Admin → Settings → Locations → click location → copy ID from URL
+                        </span>
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-top:1rem;">
+                        <button @onclick="SaveAsync" disabled="@_saving"
+                                style="padding:8px 18px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+                            @(_saving ? "Saving..." : "Save")
+                        </button>
+                        <button @onclick="CancelEdit"
+                                style="padding:8px 18px;background:white;color:#374151;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;cursor:pointer;">
+                            Cancel
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <!-- Read-only summary -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;font-size:13px;">
+                        <div>
+                            <span style="color:#9CA3AF;display:block;font-size:11px;margin-bottom:2px;">INTERVAL</span>
+                            <span>@config.SyncIntervalMinutes min</span>
+                        </div>
+                        <div>
+                            <span style="color:#9CA3AF;display:block;font-size:11px;margin-bottom:2px;">WAREHOUSE</span>
+                            <span>@(string.IsNullOrEmpty(config.WarehouseCode) ? "—" : config.WarehouseCode)</span>
+                        </div>
+                        <div>
+                            <span style="color:#9CA3AF;display:block;font-size:11px;margin-bottom:2px;">ITEMS</span>
+                            <span>@(string.IsNullOrEmpty(config.ItemCodes) ? "All items" : config.ItemCodes)</span>
+                        </div>
+                        <div>
+                            <span style="color:#9CA3AF;display:block;font-size:11px;margin-bottom:2px;">SHOPIFY LOCATION</span>
+                            <span>@(string.IsNullOrEmpty(config.ShopifyLocationId) ? "—" : config.ShopifyLocationId)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_configs.Count == 0)
+        {
+            <div style="text-align:center;padding:3rem;color:#9CA3AF;font-size:14px;">
+                No tenants found. Add a client first.
+            </div>
+        }
+
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "key")]
+    public string? Key { get; set; }
+
+    private bool _authenticated;
+    private bool _isAdmin;
+    private string? _tenantId;
+    private bool _saving;
+    private string _message = string.Empty;
+    private bool _messageIsError;
+    private string? _editingTenantId;
+    private SyncConfigForm? _editForm;
+    private List<TenantSyncConfig> _configs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Key)) return;
+        await AuthenticateAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_authenticated) return;
+        if (string.IsNullOrEmpty(Key)) return;
+        await AuthenticateAsync();
+    }
+
+    private async Task AuthenticateAsync()
+    {
+        var (isValid, isAdmin, tenantId) = await AuthService.ValidateAsync(Key!);
+        if (!isValid)
+        {
+            Nav.NavigateTo("/dashboard/login", forceLoad: true);
+            return;
+        }
+        _authenticated = true;
+        _isAdmin = isAdmin;
+        _tenantId = tenantId;
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (_isAdmin)
+        {
+            // Admin sees all tenants — auto-create missing configs
+            var allTenants = await Db.Tenants
+                .Where(t => t.IsActive)
+                .Select(t => t.TenantId)
+                .ToListAsync();
+
+            var existingConfigs = await Db.TenantSyncConfigs
+                .Select(c => c.TenantId)
+                .ToListAsync();
+
+            foreach (var tid in allTenants.Where(t => !existingConfigs.Contains(t)))
+            {
+                Db.TenantSyncConfigs.Add(new TenantSyncConfig
+                {
+                    TenantId = tid,
+                    IsInventorySyncEnabled = false,
+                    SyncIntervalMinutes = 30,
+                    WarehouseCode = "01"
+                });
+            }
+
+            if (allTenants.Any(t => !existingConfigs.Contains(t)))
+                await Db.SaveChangesAsync();
+
+            _configs = await Db.TenantSyncConfigs
+                .OrderBy(c => c.TenantId)
+                .ToListAsync();
+        }
+        else
+        {
+            // Client sees only their own config
+            var config = await Db.TenantSyncConfigs
+                .FirstOrDefaultAsync(c => c.TenantId == _tenantId);
+
+            if (config is not null)
+                _configs = new List<TenantSyncConfig> { config };
+        }
+    }
+
+    private void StartEdit(TenantSyncConfig config)
+    {
+        _editingTenantId = config.TenantId;
+        _editForm = new SyncConfigForm
+        {
+            IsInventorySyncEnabled = config.IsInventorySyncEnabled,
+            SyncIntervalMinutes = config.SyncIntervalMinutes,
+            WarehouseCode = config.WarehouseCode,
+            ItemCodes = config.ItemCodes,
+            ShopifyLocationId = config.ShopifyLocationId
+        };
+        _message = string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editForm is null || _editingTenantId is null) return;
+
+        // Security check — client can only edit their own config
+        if (!_isAdmin && _editingTenantId != _tenantId)
+        {
+            _message = "You are not authorized to edit this config.";
+            _messageIsError = true;
+            return;
+        }
+
+        _saving = true;
+        _message = string.Empty;
+
+        try
+        {
+            var config = await Db.TenantSyncConfigs
+                .FirstOrDefaultAsync(c => c.TenantId == _editingTenantId);
+
+            if (config is null)
+            {
+                _message = "Config not found.";
+                _messageIsError = true;
+                return;
+            }
+
+            config.IsInventorySyncEnabled = _editForm.IsInventorySyncEnabled;
+            config.SyncIntervalMinutes = _editForm.SyncIntervalMinutes;
+            config.WarehouseCode = _editForm.WarehouseCode.Trim();
+            config.ItemCodes = _editForm.ItemCodes.Trim();
+            config.ShopifyLocationId = _editForm.ShopifyLocationId.Trim();
+            config.UpdatedAt = DateTime.UtcNow;
+
+            await Db.SaveChangesAsync();
+            await LoadDataAsync();
+
+            _editingTenantId = null;
+            _editForm = null;
+            _message = "Sync config saved successfully.";
+            _messageIsError = false;
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error saving: {ex.Message}";
+            _messageIsError = true;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void CancelEdit()
+    {
+        _editingTenantId = null;
+        _editForm = null;
+        _message = string.Empty;
+    }
+
+    private const string FieldGroupStyle = "margin-bottom:1rem;";
+    private const string LabelStyle =
+        "display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;";
+    private const string InputStyle =
+        "width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;";
+    private const string HintStyle =
+        "font-size:11px;color:#9CA3AF;margin-top:3px;display:block;";
+    private const string EditBtnStyle =
+        "font-size:12px;padding:5px 12px;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer;background:white;";
+    private const string SuccessBoxStyle =
+        "background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:1rem;";
+    private const string ErrorBoxStyle =
+        "background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:1rem;";
+
+    private static string BadgeStyle(bool enabled) => enabled
+        ? "background:#DCFCE7;color:#15803D;padding:2px 8px;border-radius:12px;font-size:12px;"
+        : "background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:12px;font-size:12px;";
+
+    public class SyncConfigForm
+    {
+        public bool IsInventorySyncEnabled { get; set; }
+        public int SyncIntervalMinutes { get; set; } = 30;
+        public string WarehouseCode { get; set; } = "01";
+        public string ItemCodes { get; set; } = string.Empty;
+        public string ShopifyLocationId { get; set; } = string.Empty;
+    }
+}
