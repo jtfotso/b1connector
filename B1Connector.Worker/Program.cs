@@ -81,6 +81,8 @@ app.MapShopifyEndpoints();
 app.MapShopifyInventoryEndpoints();
 
 app.UseStaticFiles();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAntiforgery();
 app.MapRazorComponents<B1Connector.Worker.App>().AddInteractiveServerRenderMode();
  

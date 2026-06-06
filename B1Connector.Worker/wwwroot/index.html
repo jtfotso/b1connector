@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B1 Connector — SAP Business One × Shopify Integration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0D0D0D;
+      --paper: #F5F0E8;
+      --accent: #1A4FD6;
+      --accent-light: #E8EEFB;
+      --muted: #6B6560;
+      --border: #DDD8CE;
+      --white: #FFFFFF;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.6; overflow-x: hidden; }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2.5rem; background: rgba(245,240,232,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-logo { font-family: 'DM Serif Display', serif; font-size: 1.3rem; color: var(--ink); text-decoration: none; letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--accent); }
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+    .lang-switcher { display: flex; gap: 4px; }
+    .lang-btn { background: none; border: 1px solid transparent; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--muted); font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .lang-btn.active, .lang-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .nav-cta { background: var(--ink); color: var(--white); padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; text-decoration: none; transition: opacity 0.2s; }
+    .nav-cta:hover { opacity: 0.8; }
+    .hero { min-height: 100vh; display: flex; align-items: center; padding: 8rem 2.5rem 4rem; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -200px; right: -200px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(26,79,214,0.08) 0%, transparent 70%); pointer-events: none; }
+    .hero-inner { max-width: 1100px; margin: 0 auto; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+    .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; background: var(--accent-light); color: var(--accent); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 1.5rem; }
+    .hero-eyebrow::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+    .hero h1 { font-family: 'DM Serif Display', serif; font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1.1; letter-spacing: -0.03em; color: var(--ink); margin-bottom: 1.5rem; }
+    .hero h1 em { font-style: italic; color: var(--accent); }
+    .hero-desc { font-size: 1.1rem; color: var(--muted); max-width: 480px; margin-bottom: 2.5rem; line-height: 1.7; }
+    .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .btn-primary { background: var(--accent); color: var(--white); padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 500; text-decoration: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary:hover { background: #1340B0; transform: translateY(-1px); }
+    .btn-secondary { background: transparent; color: var(--ink); padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 500; text-decoration: none; border: 1.5px solid var(--border); transition: all 0.2s; }
+    .btn-secondary:hover { border-color: var(--ink); }
+    .hero-visual { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.08); }
+    .flow { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+    .flow-node { flex: 1; text-align: center; background: var(--paper); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .flow-node-icon { font-size: 1.8rem; margin-bottom: 6px; display: block; }
+    .flow-node-label { font-size: 12px; font-weight: 600; color: var(--ink); letter-spacing: 0.03em; }
+    .flow-arrow { color: var(--accent); font-size: 1.5rem; flex-shrink: 0; font-weight: 300; }
+    .flow-connector { background: var(--accent); color: var(--white); border-radius: 10px; padding: 1rem; text-align: center; flex: 1; }
+    .flow-connector-label { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+    .sync-items { display: flex; flex-direction: column; gap: 8px; }
+    .sync-item { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+    .sync-item-dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; flex-shrink: 0; }
+    .sync-item-dot.pending { background: #F59E0B; }
+    .logos-section { padding: 3rem 2.5rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); text-align: center; }
+    .logos-label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.5rem; }
+    .logos-row { display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap; }
+    .logo-pill { background: var(--white); border: 1px solid var(--border); padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+    .features { padding: 6rem 2.5rem; max-width: 1100px; margin: 0 auto; }
+    .section-label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; }
+    .section-title { font-family: 'DM Serif Display', serif; font-size: clamp(1.8rem, 3vw, 2.5rem); letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 3rem; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .feature-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem; transition: transform 0.2s, box-shadow 0.2s; }
+    .feature-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+    .feature-icon { font-size: 1.75rem; margin-bottom: 1rem; display: block; }
+    .feature-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; color: var(--ink); }
+    .feature-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .pricing { padding: 6rem 2.5rem; background: var(--white); }
+    .pricing-inner { max-width: 1000px; margin: 0 auto; text-align: center; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-top: 3rem; text-align: left; }
+    .pricing-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 2rem; position: relative; }
+    .pricing-card.featured { border-color: var(--accent); background: var(--accent-light); }
+    .pricing-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--white); font-size: 11px; font-weight: 600; padding: 4px 14px; border-radius: 20px; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+    .pricing-name { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; }
+    .pricing-price { font-family: 'DM Serif Display', serif; font-size: 2.5rem; letter-spacing: -0.03em; color: var(--ink); margin-bottom: 4px; }
+    .pricing-price span { font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--muted); }
+    .pricing-desc { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.5; }
+    .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.75rem; }
+    .pricing-features li { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--ink); }
+    .pricing-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .btn-pricing { display: block; text-align: center; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.2s; }
+    .btn-pricing-outline { border: 1.5px solid var(--ink); color: var(--ink); }
+    .btn-pricing-outline:hover { background: var(--ink); color: var(--white); }
+    .btn-pricing-filled { background: var(--accent); color: var(--white); border: none; }
+    .btn-pricing-filled:hover { background: #1340B0; }
+    .cta-section { padding: 6rem 2.5rem; text-align: center; max-width: 700px; margin: 0 auto; }
+    .cta-section h2 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 1.25rem; }
+    .cta-section p { color: var(--muted); font-size: 1.05rem; margin-bottom: 2rem; line-height: 1.7; }
+    footer { border-top: 1px solid var(--border); padding: 2rem 2.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; font-size: 13px; color: var(--muted); }
+    .footer-logo { font-family: 'DM Serif Display', serif; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
+    .footer-logo span { color: var(--accent); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .hero-content > * { animation: fadeUp 0.6s ease both; }
+    .hero-eyebrow { animation-delay: 0.1s; }
+    .hero h1 { animation-delay: 0.2s; }
+    .hero-desc { animation-delay: 0.3s; }
+    .hero-actions { animation-delay: 0.4s; }
+    .hero-visual { animation: fadeUp 0.8s ease 0.3s both; }
+    [data-lang] { display: none; }
+    [data-lang].active { display: block; }
+    span[data-lang].active { display: inline; }
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.25rem; }
+      .hero-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+      .hero { padding: 6rem 1.25rem 3rem; }
+      .features, .pricing-inner, .cta-section { padding: 4rem 1.25rem; }
+      .logos-section { padding: 2rem 1.25rem; }
+      footer { padding: 1.5rem 1.25rem; flex-direction: column; text-align: center; }
+      .nav-right { gap: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo">B1<span>Connector</span></a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('de')">DE</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('fr')">FR</button>
+    </div>
+    <a href="/dashboard/login" class="nav-cta">
+      <span data-lang="de" class="active">Anmelden</span>
+      <span data-lang="en">Login</span>
+      <span data-lang="fr">Connexion</span>
+    </a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-eyebrow">
+        <span data-lang="de" class="active">SAP Business One Integration</span>
+        <span data-lang="en">SAP Business One Integration</span>
+        <span data-lang="fr">Intégration SAP Business One</span>
+      </div>
+      <h1>
+        <span data-lang="de" class="active">SAP B1 & Shopify — <em>automatisch synchronisiert</em></span>
+        <span data-lang="en">SAP B1 & Shopify — <em>automatically in sync</em></span>
+        <span data-lang="fr">SAP B1 & Shopify — <em>synchronisés automatiquement</em></span>
+      </h1>
+      <p class="hero-desc">
+        <span data-lang="de" class="active">Bestellungen, Lagerbestände und Kundendaten fließen automatisch zwischen Shopify und SAP Business One — ohne manuelle Dateneingabe.</span>
+        <span data-lang="en">Orders, inventory and customer data flow automatically between Shopify and SAP Business One — no manual data entry.</span>
+        <span data-lang="fr">Les commandes, stocks et données clients circulent automatiquement entre Shopify et SAP Business One — sans saisie manuelle.</span>
+      </p>
+      <div class="hero-actions">
+        <a href="mailto:contact@b1connector.com" class="btn-primary">
+          <span data-lang="de" class="active">Demo anfragen →</span>
+          <span data-lang="en">Request a demo →</span>
+          <span data-lang="fr">Demander une démo →</span>
+        </a>
+        <a href="#pricing" class="btn-secondary">
+          <span data-lang="de" class="active">Preise ansehen</span>
+          <span data-lang="en">See pricing</span>
+          <span data-lang="fr">Voir les tarifs</span>
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="flow">
+        <div class="flow-node">
+          <span class="flow-node-icon">🛍️</span>
+          <div class="flow-node-label">Shopify</div>
+        </div>
+        <div class="flow-arrow">⇄</div>
+        <div class="flow-connector">
+          <div class="flow-node-icon" style="font-size:1.4rem;">⚡</div>
+          <div class="flow-connector-label">B1 Connector</div>
+        </div>
+        <div class="flow-arrow">⇄</div>
+        <div class="flow-node">
+          <span class="flow-node-icon">🏢</span>
+          <div class="flow-node-label">SAP B1</div>
+        </div>
+      </div>
+      <div class="sync-items">
+        <div class="sync-item">
+          <div class="sync-item-dot"></div>
+          <span data-lang="de" class="active">Bestellung #4821 → SAP Auftrag erstellt</span>
+          <span data-lang="en">Order #4821 → SAP Sales Order created</span>
+          <span data-lang="fr">Commande #4821 → Commande SAP créée</span>
+        </div>
+        <div class="sync-item">
+          <div class="sync-item-dot"></div>
+          <span data-lang="de" class="active">Lagerbestand ITEM-042 → Shopify aktualisiert</span>
+          <span data-lang="en">Stock ITEM-042 → Shopify updated</span>
+          <span data-lang="fr">Stock ITEM-042 → Shopify mis à jour</span>
+        </div>
+        <div class="sync-item">
+          <div class="sync-item-dot pending"></div>
+          <span data-lang="de" class="active">Bestellung #4822 → wird verarbeitet…</span>
+          <span data-lang="en">Order #4822 → processing…</span>
+          <span data-lang="fr">Commande #4822 → en cours…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="logos-section">
+  <p class="logos-label">
+    <span data-lang="de" class="active">Kompatibel mit</span>
+    <span data-lang="en">Compatible with</span>
+    <span data-lang="fr">Compatible avec</span>
+  </p>
+  <div class="logos-row">
+    <div class="logo-pill">SAP Business One 10.0</div>
+    <div class="logo-pill">Shopify & Shopify Plus</div>
+    <div class="logo-pill">WooCommerce</div>
+    <div class="logo-pill">SAP Service Layer</div>
+  </div>
+</div>
+<section class="features">
+  <p class="section-label">
+    <span data-lang="de" class="active">Funktionen</span>
+    <span data-lang="en">Features</span>
+    <span data-lang="fr">Fonctionnalités</span>
+  </p>
+  <h2 class="section-title">
+    <span data-lang="de" class="active">Alles, was Sie für eine nahtlose Integration brauchen</span>
+    <span data-lang="en">Everything you need for seamless integration</span>
+    <span data-lang="fr">Tout ce dont vous avez besoin pour une intégration parfaite</span>
+  </h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🔄</span>
+      <div class="feature-title">
+        <span data-lang="de" class="active">Echtzeit-Bestellsync</span>
+        <span data-lang="en">Real-time order sync</span>
+        <span data-lang="fr">Sync commandes en temps réel</span>
+      </div>
+      <p class="feature-desc">
+        <span data-lang="de" class="active">Shopify-Bestellungen werden sofort als SAP B1 Verkaufsaufträge angelegt — automatisch, zuverlässig, nachvollziehbar.</span>
+        <span data-lang="en">Shopify orders are instantly created as SAP B1 Sales Orders — automatically, reliably, with full audit trail.</span>
+        <span data-lang="fr">Les commandes Shopify sont immédiatement créées comme commandes SAP B1 — automatiquement, fiablement, avec traçabilité.</span>
+      </p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📦</span>
+      <div class="feature-title">
+        <span data-lang="de" class="active">Geplante Lagerbestandssynchronisation</span>
+        <span data-lang="en">Scheduled inventory sync</span>
+        <span data-lang="fr">Sync stocks programmée</span>
+      </div>
+      <p class="feature-desc">
+        <span data-lang="de" class="active">Lagerbestände aus SAP B1 werden automatisch in Shopify aktualisiert — konfigurierbar pro Mandant, alle 15 Minuten bis täglich.</span>
+        <span data-lang="en">Stock levels from SAP B1 automatically update in Shopify — configurable per client, every 15 minutes to daily.</span>
+        <span data-lang="fr">Les niveaux de stock de SAP B1 se mettent à jour automatiquement dans Shopify — configurable par client, toutes les 15 minutes à une fois par jour.</span>
+      </p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🏢</span>
+      <div class="feature-title">
+        <span data-lang="de" class="active">Multi-Mandanten-Architektur</span>
+        <span data-lang="en">Multi-tenant architecture</span>
+        <span data-lang="fr">Architecture multi-tenant</span>
+      </div>
+      <p class="feature-desc">
+        <span data-lang="de" class="active">Jeder Kunde hat seine eigenen verschlüsselten SAP B1- und Shopify-Zugangsdaten — vollständig isoliert und sicher.</span>
+        <span data-lang="en">Each client has their own encrypted SAP B1 and Shopify credentials — fully isolated and secure.</span>
+        <span data-lang="fr">Chaque client possède ses propres identifiants SAP B1 et Shopify chiffrés — totalement isolés et sécurisés.</span>
+      </p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📊</span>
+      <div class="feature-title">
+        <span data-lang="de" class="active">Echtzeit-Dashboard</span>
+        <span data-lang="en">Real-time dashboard</span>
+        <span data-lang="fr">Tableau de bord en temps réel</span>
+      </div>
+      <p class="feature-desc">
+        <span data-lang="de" class="active">Überwachen Sie alle Synchronisierungsaufträge, Fehler und Logs in einem übersichtlichen Dashboard — für Sie und Ihre Kunden.</span>
+        <span data-lang="en">Monitor all sync jobs, errors and logs in a clean dashboard — for you and your clients.</span>
+        <span data-lang="fr">Surveillez tous les jobs de synchronisation, erreurs et logs dans un tableau de bord clair — pour vous et vos clients.</span>
+      </p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔁</span>
+      <div class="feature-title">
+        <span data-lang="de" class="active">Automatische Wiederholung bei Fehlern</span>
+        <span data-lang="en">Automatic retry on failure</span>
+        <span data-lang="fr">Nouvelle tentative automatique</span>
+      </div>
+      <p class="feature-desc">
+        <span data-lang="de" class="active">Fehlgeschlagene Jobs werden automatisch bis zu 3 Mal wiederholt — mit vollständiger Fehlerprotokollierung.</span>
+        <span data-lang="en">Failed jobs automatically retry up to 3 times — with full error logging.</span>
+        <span data-lang="fr">Les jobs échoués réessayent automatiquement jusqu'à 3 fois — avec journalisation complète.</span>
+      </p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔐</span>
+      <div class="feature-title">
+        <span data-lang="de" class="active">Sichere HMAC-Validierung</span>
+        <span data-lang="en">Secure HMAC validation</span>
+        <span data-lang="fr">Validation HMAC sécurisée</span>
+      </div>
+      <p class="feature-desc">
+        <span data-lang="de" class="active">Jeder eingehende Shopify-Webhook wird kryptografisch validiert — kein unbefugter Zugriff möglich.</span>
+        <span data-lang="en">Every incoming Shopify webhook is cryptographically validated — no unauthorized access possible.</span>
+        <span data-lang="fr">Chaque webhook Shopify entrant est validé cryptographiquement — aucun accès non autorisé possible.</span>
+      </p>
+    </div>
+  </div>
+</section>
+<section class="pricing" id="pricing">
+  <div class="pricing-inner">
+    <p class="section-label">
+      <span data-lang="de" class="active">Preise</span>
+      <span data-lang="en">Pricing</span>
+      <span data-lang="fr">Tarifs</span>
+    </p>
+    <h2 class="section-title">
+      <span data-lang="de" class="active">Einfache, transparente Preise</span>
+      <span data-lang="en">Simple, transparent pricing</span>
+      <span data-lang="fr">Tarifs simples et transparents</span>
+    </h2>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-name">Starter</div>
+        <div class="pricing-price">€149 <span>/ <span data-lang="de" class="active">Monat</span><span data-lang="en">month</span><span data-lang="fr">mois</span></span></div>
+        <p class="pricing-desc">
+          <span data-lang="de" class="active">Für kleine Shops mit einer Integration</span>
+          <span data-lang="en">For small shops with one integration</span>
+          <span data-lang="fr">Pour les petites boutiques avec une intégration</span>
+        </p>
+        <ul class="pricing-features">
+          <li><span data-lang="de" class="active">1 Integration (Shopify ↔ SAP B1)</span><span data-lang="en">1 integration (Shopify ↔ SAP B1)</span><span data-lang="fr">1 intégration (Shopify ↔ SAP B1)</span></li>
+          <li><span data-lang="de" class="active">Bis zu 500 Bestellungen/Tag</span><span data-lang="en">Up to 500 orders/day</span><span data-lang="fr">Jusqu'à 500 commandes/jour</span></li>
+          <li><span data-lang="de" class="active">Lagerbestandssync alle 60 Min.</span><span data-lang="en">Inventory sync every 60 min</span><span data-lang="fr">Sync stocks toutes les 60 min</span></li>
+          <li><span data-lang="de" class="active">E-Mail-Support</span><span data-lang="en">Email support</span><span data-lang="fr">Support par email</span></li>
+        </ul>
+        <a href="mailto:contact@b1connector.com" class="btn-pricing btn-pricing-outline">
+          <span data-lang="de" class="active">Jetzt starten</span><span data-lang="en">Get started</span><span data-lang="fr">Commencer</span>
+        </a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge"><span data-lang="de" class="active">Beliebteste Wahl</span><span data-lang="en">Most popular</span><span data-lang="fr">Le plus populaire</span></div>
+        <div class="pricing-name">Growth</div>
+        <div class="pricing-price">€349 <span>/ <span data-lang="de" class="active">Monat</span><span data-lang="en">month</span><span data-lang="fr">mois</span></span></div>
+        <p class="pricing-desc">
+          <span data-lang="de" class="active">Für wachsende Händler mit mehreren Kanälen</span>
+          <span data-lang="en">For growing merchants with multiple channels</span>
+          <span data-lang="fr">Pour les marchands en croissance avec plusieurs canaux</span>
+        </p>
+        <ul class="pricing-features">
+          <li><span data-lang="de" class="active">Bis zu 3 Integrationen</span><span data-lang="en">Up to 3 integrations</span><span data-lang="fr">Jusqu'à 3 intégrations</span></li>
+          <li><span data-lang="de" class="active">Unbegrenzte Bestellungen</span><span data-lang="en">Unlimited orders</span><span data-lang="fr">Commandes illimitées</span></li>
+          <li><span data-lang="de" class="active">Lagerbestandssync alle 15 Min.</span><span data-lang="en">Inventory sync every 15 min</span><span data-lang="fr">Sync stocks toutes les 15 min</span></li>
+          <li><span data-lang="de" class="active">Prioritäts-Support + SLA</span><span data-lang="en">Priority support + SLA</span><span data-lang="fr">Support prioritaire + SLA</span></li>
+          <li><span data-lang="de" class="active">Benutzerdefiniertes Feld-Mapping</span><span data-lang="en">Custom field mapping UI</span><span data-lang="fr">Interface de mapping personnalisé</span></li>
+        </ul>
+        <a href="mailto:contact@b1connector.com" class="btn-pricing btn-pricing-filled">
+          <span data-lang="de" class="active">Demo anfragen</span><span data-lang="en">Request demo</span><span data-lang="fr">Demander une démo</span>
+        </a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-name">Scale</div>
+        <div class="pricing-price">€749 <span>/ <span data-lang="de" class="active">Monat</span><span data-lang="en">month</span><span data-lang="fr">mois</span></span></div>
+        <p class="pricing-desc">
+          <span data-lang="de" class="active">Für SAP-Partner und Wiederverkäufer</span>
+          <span data-lang="en">For SAP partners and resellers</span>
+          <span data-lang="fr">Pour les partenaires SAP et revendeurs</span>
+        </p>
+        <ul class="pricing-features">
+          <li><span data-lang="de" class="active">Unbegrenzte Integrationen</span><span data-lang="en">Unlimited integrations</span><span data-lang="fr">Intégrations illimitées</span></li>
+          <li><span data-lang="de" class="active">On-Premise Agent Option</span><span data-lang="en">On-premise agent option</span><span data-lang="fr">Option agent sur site</span></li>
+          <li><span data-lang="de" class="active">Dediziertes Onboarding</span><span data-lang="en">Dedicated onboarding</span><span data-lang="fr">Onboarding dédié</span></li>
+          <li><span data-lang="de" class="active">White-Label Wiederverkauf</span><span data-lang="en">White-label reseller rights</span><span data-lang="fr">Droits de revente en marque blanche</span></li>
+        </ul>
+        <a href="mailto:contact@b1connector.com" class="btn-pricing btn-pricing-outline">
+          <span data-lang="de" class="active">Kontakt aufnehmen</span><span data-lang="en">Contact us</span><span data-lang="fr">Nous contacter</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="cta-section">
+  <h2>
+    <span data-lang="de" class="active">Bereit, manuelle Dateneingabe für immer zu beenden?</span>
+    <span data-lang="en">Ready to end manual data entry for good?</span>
+    <span data-lang="fr">Prêt à en finir avec la saisie manuelle pour de bon ?</span>
+  </h2>
+  <p>
+    <span data-lang="de" class="active">Vereinbaren Sie eine kostenlose 30-minütige Demo. Wir zeigen Ihnen, wie B1 Connector in Ihrer SAP B1-Umgebung funktioniert.</span>
+    <span data-lang="en">Book a free 30-minute demo. We'll show you how B1 Connector works in your SAP B1 environment.</span>
+    <span data-lang="fr">Réservez une démo gratuite de 30 minutes. Nous vous montrerons comment B1 Connector fonctionne dans votre environnement SAP B1.</span>
+  </p>
+  <a href="mailto:contact@b1connector.com" class="btn-primary" style="display:inline-flex;">
+    <span data-lang="de" class="active">Kostenlose Demo buchen →</span>
+    <span data-lang="en">Book free demo →</span>
+    <span data-lang="fr">Réserver une démo gratuite →</span>
+  </a>
+</section>
+<footer>
+  <a href="/" class="footer-logo">B1<span>Connector</span></a>
+  <span>
+    <span data-lang="de" class="active">© 2026 B1 Connector. Alle Rechte vorbehalten.</span>
+    <span data-lang="en">© 2026 B1 Connector. All rights reserved.</span>
+    <span data-lang="fr">© 2026 B1 Connector. Tous droits réservés.</span>
+  </span>
+  <a href="/dashboard/login" style="color:var(--muted);text-decoration:none;font-size:12px;">
+    <span data-lang="de" class="active">Kunden-Login</span>
+    <span data-lang="en">Client login</span>
+    <span data-lang="fr">Connexion client</span>
+  </a>
+</footer>
+<script>
+  function setLang(lang) {
+    document.querySelectorAll('[data-lang]').forEach(el => {
+      el.classList.toggle('active', el.dataset.lang === lang);
+    });
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === lang);
+    });
+    document.documentElement.lang = lang;
+    localStorage.setItem('b1c-lang', lang);
+  }
+  const saved = localStorage.getItem('b1c-lang');
+  if (saved && saved !== 'de') setLang(saved);
+</script>
+</body>
+</html>
