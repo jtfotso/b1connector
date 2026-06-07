@@ -34,9 +34,12 @@ public class InventorySyncWorker : BackgroundService
                 _syncCount++;
 
                 // Clean up old logs once a day
-                using var scope = _scopeFactory.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                await CleanupOldLogsAsync(db, stoppingToken);
+                if (_syncCount % 1440 == 0)
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    await CleanupOldLogsAsync(db, stoppingToken);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

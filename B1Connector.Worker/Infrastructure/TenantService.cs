@@ -91,12 +91,12 @@ public class TenantService
             TenantId = tenant.TenantId,
             IsInventorySyncEnabled = false,
             SyncIntervalMinutes = 15,
-            WarehouseCode = "DEFAULT",
+            WarehouseCode = "01",
             ItemCodes = string.Empty,
             ShopifyLocationId = string.Empty,
             LastInventorySyncAt = null,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = null
         };
 
         _db.TenantSyncConfigs.Add(syncConfig);
